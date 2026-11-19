@@ -1,0 +1,10 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "沒有權限";
+}
+
+<main class="container py-5">
+    <h1>沒有權限</h1>
+    <p>此頁面僅限管理員使用。</p>
+    <a asp-area="Frontend" asp-controller="Home" asp-action="Index" class="btn btn-success">返回前台</a>
+</main>

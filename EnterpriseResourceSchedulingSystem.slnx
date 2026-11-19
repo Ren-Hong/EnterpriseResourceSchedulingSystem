@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="EnterpriseResourceSchedulingSystem.Application/EnterpriseResourceSchedulingSystem.Application.csproj" />
+  <Project Path="EnterpriseResourceSchedulingSystem.Domain/EnterpriseResourceSchedulingSystem.Domain.csproj" />
+  <Project Path="EnterpriseResourceSchedulingSystem.Infrastructure/EnterpriseResourceSchedulingSystem.Infrastructure.csproj" />
+  <Project Path="EnterpriseResourceSchedulingSystem.Web/EnterpriseResourceSchedulingSystem.Web.csproj" />
+</Solution>

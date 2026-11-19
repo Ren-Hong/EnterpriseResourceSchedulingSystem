@@ -1,0 +1,106 @@
+.backend-layout {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: #fcf7f9;
+    color: #583b49;
+}
+
+.backend-header {
+    min-height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    background: #d9a6c2;
+    border-bottom: 1px solid #c990af;
+}
+
+.backend-system-name {
+    color: #593247;
+    font-size: 1.25rem;
+}
+
+.backend-header .backend-frontend-button {
+    --bs-btn-color: #fff;
+    --bs-btn-bg: #800020;
+    --bs-btn-border-color: #800020;
+    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-bg: #66001a;
+    --bs-btn-hover-border-color: #66001a;
+    --bs-btn-active-color: #fff;
+    --bs-btn-active-bg: #590016;
+    --bs-btn-active-border-color: #590016;
+    --bs-btn-focus-shadow-rgb: 128, 0, 32;
+}
+
+.backend-body {
+    flex: 1;
+    display: flex;
+}
+
+.backend-sidebar {
+    flex: 0 0 160px;
+    background: #f4e4ed;
+    border-right: 1px solid #e4bccd;
+}
+
+.backend-sidebar-item {
+    display: block;
+    padding: 12px 16px;
+    color: #795267;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.backend-sidebar-item:hover {
+    background: #efd3df;
+    color: #64384c;
+}
+
+.backend-sidebar-item.active {
+    background: #95396e;
+    color: #fff;
+    font-weight: 600;
+    border-radius: 0 8px 8px 0;
+}
+
+.backend-sidebar-item:focus-visible,
+.backend-header a:focus-visible {
+    outline: 3px solid #593247;
+    outline-offset: 2px;
+}
+
+.backend-sidebar-item:focus-visible {
+    outline-offset: -3px;
+}
+
+.backend-content {
+    flex: 1;
+    min-width: 0;
+}
+
+@media (max-width: 991.98px) {
+    .backend-body {
+        flex-direction: column;
+    }
+
+    .backend-sidebar {
+        flex: 0 0 auto;
+        border-right: 0;
+        border-bottom: 1px solid #e4bccd;
+    }
+
+    .backend-sidebar nav {
+        display: flex;
+        overflow-x: auto;
+    }
+
+    .backend-sidebar-item.active {
+        border-radius: 0;
+    }
+}

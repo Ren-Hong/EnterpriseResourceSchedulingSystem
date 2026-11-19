@@ -1,0 +1,34 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var isHome = ViewContext.RouteData.Values["controller"] is "Home"
+        && ViewContext.RouteData.Values["action"] is "Index";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/backend-layout.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+}
+
+<div class="backend-layout">
+    <header class="backend-header shadow-sm px-4 py-3">
+        <span class="backend-system-name fw-bold">企業資源排程系統</span>
+        <a asp-area="Frontend" asp-controller="Home" asp-action="Index" class="btn backend-frontend-button btn-sm">前台作業</a>
+    </header>
+
+    <div class="backend-body">
+        <aside class="backend-sidebar">
+            <nav aria-label="後台功能選單">
+                <a asp-area="Backend" asp-controller="Home" asp-action="Index"
+                   class="backend-sidebar-item @(isHome ? "active" : null)"
+                   aria-current="@(isHome ? "page" : null)">後台首頁</a>
+            </nav>
+        </aside>
+        <main class="backend-content p-4">
+            @RenderBody()
+        </main>
+    </div>
+</div>
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

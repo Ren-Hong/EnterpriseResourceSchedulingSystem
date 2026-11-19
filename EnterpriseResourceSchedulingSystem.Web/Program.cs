@@ -1,0 +1,79 @@
+using EnterpriseResourceSchedulingSystem.Application.Abstractions.Repositories;
+using EnterpriseResourceSchedulingSystem.Domain.Entities;
+using EnterpriseResourceSchedulingSystem.Infrastructure.Repositories;
+using EnterpriseResourceSchedulingSystem.Web.Security;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddControllersWithViews();
+builder.Services.AddScoped<AccountCookieEvents>();
+
+var connectionString = builder.Configuration.GetConnectionString("ErssDatabase");
+if (!string.IsNullOrWhiteSpace(connectionString))
+{
+    builder.Services.AddScoped<IAccountRepository>(_ => new AccountRepository(connectionString));
+}
+
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/Login";
+        options.AccessDeniedPath = "/AccessDenied";
+        options.EventsType = typeof(AccountCookieEvents);
+        options.Cookie.Name = "EnterpriseResourceSchedulingSystem.Auth";
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    });
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy(AuthorizationPolicies.BackendAccess, policy =>
+        policy.RequireAuthenticatedUser().RequireRole(Account.AdministratorLevel)); // 能登入且是管理員的人能通過後台權限判斷
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
+
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Home/Error");
+    app.UseHsts();
+}
+
+app.UseHttpsRedirection();
+app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapStaticAssets().AllowAnonymous();
+
+app.MapAreaControllerRoute(
+    name: "auth",
+    areaName: "Auth",
+    pattern: "Login/{controller=Login}/{action=Index}")
+    .WithStaticAssets();
+
+app.MapAreaControllerRoute(
+    name: "frontend",
+    areaName: "Frontend",
+    pattern: "Frontend/{controller=Home}/{action=Index}/{id?}")
+    .WithStaticAssets();
+
+app.MapAreaControllerRoute(
+    name: "backend",
+    areaName: "Backend",
+    pattern: "Backend/{controller=Home}/{action=Index}/{id?}")
+    .WithStaticAssets();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}")
+    .WithStaticAssets();
+
+app.Run();

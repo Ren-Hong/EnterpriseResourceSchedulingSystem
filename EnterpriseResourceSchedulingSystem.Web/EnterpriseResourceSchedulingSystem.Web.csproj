@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>EnterpriseResourceSchedulingSystem.Web-af81e4dc-38a0-426c-932f-84ef4a7c5095</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../EnterpriseResourceSchedulingSystem.Application/EnterpriseResourceSchedulingSystem.Application.csproj" />
+    <ProjectReference Include="../EnterpriseResourceSchedulingSystem.Infrastructure/EnterpriseResourceSchedulingSystem.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Areas\Frontend\Models\" />
+    <Folder Include="Areas\Backend\Models\" />
+    <Folder Include="Options\" />
+    <Folder Include="Security\" />
+    <Folder Include="Workers\" />
+  </ItemGroup>
+</Project>

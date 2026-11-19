@@ -1,0 +1,35 @@
+@using EnterpriseResourceSchedulingSystem.Domain.Entities
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var isHome = ViewContext.RouteData.Values["controller"] is "Home"
+        && ViewContext.RouteData.Values["action"] is "Index";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/frontend-layout.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+}
+
+<div class="frontend-layout">
+    <header class="frontend-header shadow-sm px-4 py-3">
+        <span class="frontend-system-name fw-bold">企業資源排程系統</span>
+        @if (User.IsInRole(Account.AdministratorLevel))
+        {
+            <a asp-area="Backend" asp-controller="Home" asp-action="Index" class="btn btn-success btn-sm">後台管理</a>
+        }
+    </header>
+
+    <nav class="frontend-navbar" aria-label="前台功能選單">
+        <a asp-area="Frontend" asp-controller="Home" asp-action="Index"
+           class="frontend-navbar-item @(isHome ? "active" : null)"
+           aria-current="@(isHome ? "page" : null)">前台首頁</a>
+    </nav>
+
+    <main class="frontend-content p-4">
+        @RenderBody()
+    </main>
+</div>
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}

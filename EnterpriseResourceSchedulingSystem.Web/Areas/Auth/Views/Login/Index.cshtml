@@ -1,0 +1,37 @@
+@model EnterpriseResourceSchedulingSystem.Web.Areas.Auth.Models.LoginInput
+
+<main class="login-page">
+    <section class="card login-card" aria-labelledby="login-title">
+        <div class="card-body">
+            <header class="login-brand">
+                <img src="~/img/logo.png" alt="亞東紀念醫院" width="128" height="128" />
+                <h1 id="login-title">企業資源排程系統</h1>
+            </header>
+
+            <form asp-area="Auth" asp-controller="Login" asp-action="Index" method="post">
+                <input asp-for="ReturnUrl" type="hidden" />
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
+
+                <div class="mb-3">
+                    <label asp-for="Username" class="form-label fw-bold"></label>
+                    <input asp-for="Username" class="form-control login-input" autocomplete="username"
+                           placeholder="請輸入您的帳號" maxlength="50" required />
+                    <span asp-validation-for="Username" class="text-danger"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Password" class="form-label fw-bold"></label>
+                    <div class="login-password-field">
+                        <input asp-for="Password" class="form-control login-input"
+                               autocomplete="current-password" placeholder="請輸入您的密碼" required />
+                        <button type="button" class="login-password-toggle" id="toggle-password"
+                                aria-controls="Password" aria-label="顯示或隱藏密碼" hidden>顯示</button>
+                    </div>
+                    <span asp-validation-for="Password" class="text-danger"></span>
+                </div>
+
+                <button type="submit" class="btn login-button w-100">登入</button>
+            </form>
+        </div>
+    </section>
+</main>

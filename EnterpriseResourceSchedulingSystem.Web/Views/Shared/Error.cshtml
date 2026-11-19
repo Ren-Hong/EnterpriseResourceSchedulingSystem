@@ -1,0 +1,14 @@
+@model ErrorViewModel
+@{
+    ViewData["Title"] = "系統錯誤";
+}
+
+<main class="container py-4">
+    <h1>@ViewData["Title"]</h1>
+    <p>處理請求時發生錯誤。</p>
+
+    @if (Model.ShowRequestId)
+    {
+        <p>請求識別碼 <code>@Model.RequestId</code></p>
+    }
+</main>
