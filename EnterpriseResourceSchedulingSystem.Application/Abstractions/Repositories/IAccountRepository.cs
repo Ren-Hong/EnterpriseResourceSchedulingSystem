@@ -6,7 +6,7 @@ public interface IAccountRepository
 {
     Task<Account?> FindByUsernameAsync(string username, CancellationToken cancellationToken);
 
-    Task<string?> FindActiveLevelAsync(Guid userId, CancellationToken cancellationToken);
+    Task<string?> FindLevelAsync(Guid accountId, CancellationToken cancellationToken);
 
     Task<bool> RecordSuccessfulLoginAsync(Account account, CancellationToken cancellationToken);
 }

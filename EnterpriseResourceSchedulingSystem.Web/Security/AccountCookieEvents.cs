@@ -17,13 +17,13 @@ public sealed class AccountCookieEvents(IAccountRepository? accounts = null) : C
 
         if (accounts is null ||
             context.Principal?.Identity is not ClaimsIdentity identity ||
-            !Guid.TryParse(identity.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var userId))
+            !Guid.TryParse(identity.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var accountId))
         {
             await RejectAsync(context);
             return;
         }
 
-        var currentLevel = await accounts.FindActiveLevelAsync(userId, context.HttpContext.RequestAborted);
+        var currentLevel = await accounts.FindLevelAsync(accountId, context.HttpContext.RequestAborted);
         if (currentLevel is null)
         {
             await RejectAsync(context);

@@ -41,7 +41,7 @@ public sealed class LoginController(IAccountRepository? accounts = null) : Contr
         }
 
         var account = await accounts.FindByUsernameAsync(input.Username.Trim(), cancellationToken);
-        if (account is not { IsActive: true } ||
+        if (account is null ||
             Encoding.UTF8.GetByteCount(input.Password) > 72 ||
             !BCrypt.Net.BCrypt.Verify(input.Password, account.PasswordHash) ||
             !await accounts.RecordSuccessfulLoginAsync(account, cancellationToken))
@@ -52,7 +52,7 @@ public sealed class LoginController(IAccountRepository? accounts = null) : Contr
 
         var identity = new ClaimsIdentity(
             [
-                new Claim(ClaimTypes.NameIdentifier, account.UserId.ToString()),
+                new Claim(ClaimTypes.NameIdentifier, account.AccountId.ToString()),
                 new Claim(ClaimTypes.Name, account.Username),
                 new Claim(ClaimTypes.Role, account.Level)
             ],
