@@ -1,6 +1,5 @@
 using System.Security.Claims;
-using System.Text;
-using EnterpriseResourceSchedulingSystem.Application.Abstractions.Repositories;
+using EnterpriseResourceSchedulingSystem.Application.Abstractions.Services;
 using EnterpriseResourceSchedulingSystem.Web.Areas.Auth.Models;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -12,7 +11,7 @@ namespace EnterpriseResourceSchedulingSystem.Web.Areas.Auth.Controllers;
 [Area("Auth")]
 [AllowAnonymous]
 [ResponseCache(Location = ResponseCacheLocation.None, NoStore = true)]
-public sealed class LoginController(IAccountRepository? accounts = null) : Controller
+public sealed class LoginController(IAccountAuthenticationService? authentication = null) : Controller
 {
     [HttpGet]
     public IActionResult Index(string? returnUrl)
@@ -34,17 +33,17 @@ public sealed class LoginController(IAccountRepository? accounts = null) : Contr
             return View(input);
         }
 
-        if (accounts is null)
+        if (authentication is null)
         {
             ModelState.AddModelError(string.Empty, "登入服務尚未設定。");
             return View(input);
         }
 
-        var account = await accounts.FindByUsernameAsync(input.Username.Trim(), cancellationToken);
-        if (account is null ||
-            Encoding.UTF8.GetByteCount(input.Password) > 72 ||
-            !BCrypt.Net.BCrypt.Verify(input.Password, account.PasswordHash) ||
-            !await accounts.RecordSuccessfulLoginAsync(account, cancellationToken))
+        var account = await authentication.AuthenticateAsync(
+            input.Username,
+            input.Password,
+            cancellationToken);
+        if (account is null)
         {
             ModelState.AddModelError(string.Empty, "帳號或密碼錯誤。");
             return View(input);

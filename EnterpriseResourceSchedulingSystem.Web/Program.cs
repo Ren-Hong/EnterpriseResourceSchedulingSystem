@@ -1,6 +1,10 @@
 using EnterpriseResourceSchedulingSystem.Application.Abstractions.Repositories;
+using EnterpriseResourceSchedulingSystem.Application.Abstractions.Security;
+using EnterpriseResourceSchedulingSystem.Application.Abstractions.Services;
+using EnterpriseResourceSchedulingSystem.Application.Services;
 using EnterpriseResourceSchedulingSystem.Domain.Entities;
 using EnterpriseResourceSchedulingSystem.Infrastructure.Repositories;
+using EnterpriseResourceSchedulingSystem.Infrastructure.Security;
 using EnterpriseResourceSchedulingSystem.Web.Security;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -9,11 +13,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<AccountCookieEvents>();
+builder.Services.AddSingleton<IPasswordVerifier, BCryptPasswordVerifier>();
 
 var connectionString = builder.Configuration.GetConnectionString("ErssDatabase");
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddScoped<IAccountRepository>(_ => new AccountRepository(connectionString));
+    builder.Services.AddScoped<IAccountAuthenticationService, AccountAuthenticationService>();
 }
 
 builder.Services
