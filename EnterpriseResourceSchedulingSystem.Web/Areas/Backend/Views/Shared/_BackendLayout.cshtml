@@ -30,9 +30,11 @@
 
                 <div class="backend-nav-group">
                     <span class="backend-nav-label">人員與權限</span>
-                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
-                        <i class="bi bi-people backend-nav-icon" aria-hidden="true"></i><span>人員名單</span><span class="backend-nav-badge">規劃中</span>
-                    </span>
+                    <a asp-area="Backend" asp-controller="Users" asp-action="Index"
+                       class="backend-sidebar-item @(ViewContext.RouteData.Values["controller"] is "Users" ? "active" : null)"
+                       aria-current="@(ViewContext.RouteData.Values["controller"] is "Users" ? "page" : null)">
+                        <i class="bi bi-people backend-nav-icon" aria-hidden="true"></i><span>人員名單</span>
+                    </a>
                     <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
                         <i class="bi bi-person-vcard backend-nav-icon" aria-hidden="true"></i><span>身分別設定</span><span class="backend-nav-badge">規劃中</span>
                     </span>

@@ -8,7 +8,7 @@ GO
 USE [ERSS];
 GO
 
-/* Existing login accounts remain independent of the personnel directory. */
+/* Existing login accounts remain independent of the users directory. */
 IF OBJECT_ID(N'dbo.ERSSACCTBL', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.ERSSACCTBL
@@ -31,7 +31,7 @@ BEGIN
 END;
 GO
 
-/* Personnel directory: no login credentials and exactly one optional identity type column. */
+/* User directory: no login credentials and exactly one optional identity type column. */
 IF OBJECT_ID(N'dbo.ERSSUSERTBL', N'U') IS NULL
 BEGIN
     CREATE TABLE dbo.ERSSUSERTBL
@@ -236,7 +236,7 @@ IF DATABASE_PRINCIPAL_ID(N'erss_app') IS NOT NULL
 BEGIN
     GRANT SELECT ON OBJECT::dbo.ERSSACCTBL (UIDACCTID, NVCHUSERNAME, VCHPASSWORDHASH, NVCHLEVEL) TO [erss_app];
     GRANT UPDATE ON OBJECT::dbo.ERSSACCTBL (DTMLASTLOGINAT) TO [erss_app];
-    GRANT SELECT ON OBJECT::dbo.ERSSUSERTBL (UIDUSERID, UIDIDNTYPE, NVCHDISPLAYNAME) TO [erss_app];
+    GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.ERSSUSERTBL TO [erss_app];
     GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.ERSSIDNTBL TO [erss_app];
     GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.ERSSRESTBL TO [erss_app];
     GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.ERSSRESFEETBL TO [erss_app];

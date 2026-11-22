@@ -1,0 +1,112 @@
+@{
+    ViewData["Title"] = "人員名單";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/backend-users.css" asp-append-version="true" />
+}
+
+<main id="usersPage" class="users-page" aria-label="人員名單"
+      data-api-url="@Url.Content("~/api/users")">
+    @Html.AntiForgeryToken()
+
+    <section class="users-card" aria-label="人員名單資料表">
+        <form id="usersSearchForm" class="users-filter" autocomplete="off">
+            <div class="users-filter-field users-filter-search">
+                <label for="usersKeyword">姓名搜尋</label>
+                <div class="users-search-input">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input id="usersKeyword" maxlength="100" placeholder="輸入人員姓名" />
+                </div>
+            </div>
+            <div class="users-filter-field users-filter-identity">
+                <label for="usersIdentityFilter">身分別</label>
+                <select id="usersIdentityFilter"><option value="">全部身分別</option></select>
+            </div>
+            <div class="users-filter-actions">
+                <button type="submit" class="users-button users-button-search"><i class="bi bi-search" aria-hidden="true"></i>查詢</button>
+                <button id="clearUserSearchButton" type="button" class="users-button users-button-secondary">清除</button>
+            </div>
+            <button id="addUserButton" type="button" class="users-button users-button-primary users-filter-add">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>新增人員
+            </button>
+        </form>
+
+        <div class="users-feedback" id="usersFeedback" role="status" aria-live="polite" hidden></div>
+        <div class="users-table-wrapper">
+            <div class="table-responsive" tabindex="0" role="region" aria-label="人員名單資料表，可水平捲動">
+                <table class="table users-table align-middle mb-0">
+                    <caption class="visually-hidden">人員名單，包含姓名、身分別、建立資訊與管理操作。</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col" class="users-number-column">序號</th>
+                            <th scope="col">姓名</th>
+                            <th scope="col">身分別</th>
+                            <th scope="col">建立人員</th>
+                            <th scope="col">建立時間</th>
+                            <th scope="col" class="users-action-column">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr><td colspan="6" class="users-empty">載入人員資料中…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="users-footer">
+            <span id="usersResultCount" aria-live="polite">共 0 筆</span>
+            <nav id="usersPagination" aria-label="人員名單分頁"></nav>
+        </footer>
+    </section>
+</main>
+
+<div class="modal fade users-modal" id="usersEditorModal" tabindex="-1" aria-labelledby="usersEditorTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="usersEditorForm" class="modal-content" autocomplete="off">
+            <div class="modal-header">
+                <h2 id="usersEditorTitle" class="modal-title fs-5">新增人員</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="usersEditorError" class="users-alert users-alert-error" role="alert" hidden></div>
+                <div class="users-form-field">
+                    <label for="usersEditorName">人員姓名 <span>*</span></label>
+                    <input id="usersEditorName" maxlength="100" required placeholder="請輸入姓名" />
+                </div>
+                <div class="users-form-field">
+                    <label for="usersEditorIdentity">身分別 <span>*</span></label>
+                    <select id="usersEditorIdentity" required><option value="">請選擇身分別</option></select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="users-button users-button-secondary" data-bs-dismiss="modal">取消</button>
+                <button id="saveUserButton" type="submit" class="users-button users-button-primary">新增</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade users-modal" id="usersDeleteModal" tabindex="-1" aria-labelledby="usersDeleteTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="usersDeleteTitle" class="modal-title fs-5">刪除人員</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="usersDeleteError" class="users-alert users-alert-error" role="alert" hidden></div>
+                <p>確定要刪除這位人員？</p>
+                <p id="usersDeleteName" class="fw-bold mb-0"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="users-button users-button-secondary" data-bs-dismiss="modal">取消</button>
+                <button id="confirmDeleteUserButton" type="button" class="users-button users-button-delete">確認刪除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/backend-users.js" asp-append-version="true"></script>
+}

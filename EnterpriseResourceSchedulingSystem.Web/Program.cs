@@ -20,6 +20,8 @@ if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddScoped<IAccountRepository>(_ => new AccountRepository(connectionString));
     builder.Services.AddScoped<IAccountAuthenticationService, AccountAuthenticationService>();
+    builder.Services.AddScoped<IUserRepository>(_ => new UserRepository(connectionString));
+    builder.Services.AddScoped<IUserService, UserService>();
 }
 
 builder.Services
@@ -38,7 +40,7 @@ builder.Services
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(AuthorizationPolicies.BackendAccess, policy =>
-        policy.RequireAuthenticatedUser().RequireRole(Account.AdministratorLevel)); // 能登入且是管理員的人能通過後台權限判斷
+        policy.RequireAuthenticatedUser().RequireRole(Account.AdministratorLevel));
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
         .Build();
