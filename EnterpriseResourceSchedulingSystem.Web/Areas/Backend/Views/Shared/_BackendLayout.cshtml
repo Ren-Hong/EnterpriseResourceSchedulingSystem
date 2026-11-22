@@ -35,22 +35,15 @@
                        aria-current="@(ViewContext.RouteData.Values["controller"] is "Users" ? "page" : null)">
                         <i class="bi bi-people backend-nav-icon" aria-hidden="true"></i><span>人員名單</span>
                     </a>
-                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
-                        <i class="bi bi-person-vcard backend-nav-icon" aria-hidden="true"></i><span>身分別設定</span><span class="backend-nav-badge">規劃中</span>
-                    </span>
-                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
-                        <i class="bi bi-shield-check backend-nav-icon" aria-hidden="true"></i><span>資源使用權限</span><span class="backend-nav-badge">規劃中</span>
-                    </span>
                 </div>
 
                 <div class="backend-nav-group">
                     <span class="backend-nav-label">資源設定</span>
-                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
-                        <i class="bi bi-box-seam backend-nav-icon" aria-hidden="true"></i><span>設備與資源</span><span class="backend-nav-badge">規劃中</span>
-                    </span>
-                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
-                        <i class="bi bi-cash-coin backend-nav-icon" aria-hidden="true"></i><span>身分費率</span><span class="backend-nav-badge">規劃中</span>
-                    </span>
+                    <a asp-area="Backend" asp-controller="Resources" asp-action="Index"
+                       class="backend-sidebar-item @(ViewContext.RouteData.Values["controller"] is "Resources" ? "active" : null)"
+                       aria-current="@(ViewContext.RouteData.Values["controller"] is "Resources" ? "page" : null)">
+                        <i class="bi bi-box-seam backend-nav-icon" aria-hidden="true"></i><span>設備與資源</span>
+                    </a>
                 </div>
 
                 <div class="backend-nav-group">

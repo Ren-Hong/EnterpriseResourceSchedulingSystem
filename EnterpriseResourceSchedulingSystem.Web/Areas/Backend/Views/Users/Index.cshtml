@@ -7,7 +7,8 @@
 }
 
 <main id="usersPage" class="users-page" aria-label="人員名單"
-      data-api-url="@Url.Content("~/api/users")">
+      data-api-url="@Url.Content("~/api/users")"
+      data-identity-api-url="@Url.Content("~/api/identity-types")">
     @Html.AntiForgeryToken()
 
     <section class="users-card" aria-label="人員名單資料表">
@@ -27,9 +28,14 @@
                 <button type="submit" class="users-button users-button-search"><i class="bi bi-search" aria-hidden="true"></i>查詢</button>
                 <button id="clearUserSearchButton" type="button" class="users-button users-button-secondary">清除</button>
             </div>
-            <button id="addUserButton" type="button" class="users-button users-button-primary users-filter-add">
-                <i class="bi bi-plus-lg" aria-hidden="true"></i>新增人員
-            </button>
+            <div class="users-filter-add-group">
+                <button id="manageIdentityTypesButton" type="button" class="users-button users-button-primary">
+                    <i class="bi bi-person-vcard" aria-hidden="true"></i>管理身分別
+                </button>
+                <button id="addUserButton" type="button" class="users-button users-button-primary">
+                    <i class="bi bi-plus-lg" aria-hidden="true"></i>新增人員
+                </button>
+            </div>
         </form>
 
         <div class="users-feedback" id="usersFeedback" role="status" aria-live="polite" hidden></div>
@@ -60,6 +66,87 @@
         </footer>
     </section>
 </main>
+
+<div class="modal fade users-modal users-management-modal" id="identityTypesModal" tabindex="-1" aria-labelledby="identityTypesModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="identityTypesModalTitle" class="modal-title fs-5">管理身分別</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="identityTypesModalFeedback" class="users-alert users-alert-error" role="alert" hidden></div>
+                <section id="identityTypesListPanel" aria-label="身分別清單">
+                    <div class="users-modal-toolbar">
+                        <div class="users-modal-search">
+                            <label for="identityTypesModalKeyword">身分別搜尋</label>
+                            <input id="identityTypesModalKeyword" maxlength="50" placeholder="輸入身分別名稱" />
+                        </div>
+                        <button id="searchIdentityTypesButton" type="button" class="users-button users-button-search"><i class="bi bi-search" aria-hidden="true"></i>查詢</button>
+                        <button id="clearIdentityTypesButton" type="button" class="users-button users-button-secondary">清除</button>
+                        <button id="addIdentityTypeButton" type="button" class="users-button users-button-primary ms-auto"><i class="bi bi-plus-lg" aria-hidden="true"></i>新增身分別</button>
+                    </div>
+                    <div class="table-responsive users-modal-table-scroll" tabindex="0" role="region" aria-label="身分別清單，可水平捲動">
+                        <table class="table users-table align-middle mb-0">
+                            <thead><tr><th scope="col">身分別名稱</th><th scope="col">說明</th><th scope="col">建立人員</th><th scope="col">建立時間</th><th scope="col" class="users-action-column">操作</th></tr></thead>
+                            <tbody id="identityTypesModalTableBody"><tr><td colspan="5" class="users-empty">載入中…</td></tr></tbody>
+                        </table>
+                    </div>
+                    <footer class="users-footer users-modal-footer">
+                        <span id="identityTypesModalResultCount">共 0 筆</span>
+                        <nav id="identityTypesModalPagination" aria-label="身分別清單分頁"></nav>
+                    </footer>
+                </section>
+                <form id="identityTypeEditorForm" class="users-inline-editor" autocomplete="off" hidden>
+                    <h3 id="identityTypeEditorTitle">新增身分別</h3>
+                    <div class="users-alert users-alert-error" id="identityTypeEditorError" role="alert" hidden></div>
+                    <div class="users-form-field">
+                        <label for="identityTypeEditorName">身分別名稱 <span>*</span></label>
+                        <input id="identityTypeEditorName" maxlength="50" required placeholder="例如：成人、兒童" />
+                    </div>
+                    <div class="users-form-field">
+                        <label for="identityTypeEditorDescription">說明</label>
+                        <textarea id="identityTypeEditorDescription" maxlength="200" rows="3" placeholder="補充身分別適用說明（選填）"></textarea>
+                    </div>
+                    <div class="users-editor-actions">
+                        <button id="cancelIdentityTypeEditButton" type="button" class="users-button users-button-secondary">返回清單</button>
+                        <button id="saveIdentityTypeButton" type="submit" class="users-button users-button-primary">新增</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer"><button type="button" class="users-button users-button-secondary" data-bs-dismiss="modal">關閉</button></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade users-modal" id="userResourcesModal" tabindex="-1" aria-labelledby="userResourcesModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="userResourcesModalTitle" class="modal-title fs-5">資源使用權限</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="userResourcesFeedback" class="users-alert users-alert-error" role="alert" hidden></div>
+                <p class="users-resource-person">人員：<strong id="userResourcesPersonName"></strong></p>
+                <form id="assignResourceForm" class="users-resource-assign">
+                    <div class="users-form-field">
+                        <label for="availableResourcesSelect">可授權設備／資源</label>
+                        <select id="availableResourcesSelect" required><option value="">請選擇設備／資源</option></select>
+                    </div>
+                    <button id="assignResourceButton" type="submit" class="users-button users-button-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i>新增權限</button>
+                </form>
+                <div class="table-responsive users-modal-table-scroll" tabindex="0" role="region" aria-label="已授權資源，可水平捲動">
+                    <table class="table users-table align-middle mb-0">
+                        <thead><tr><th scope="col">已授權設備／資源</th><th scope="col">授權人員</th><th scope="col">授權時間</th><th scope="col" class="users-action-column">操作</th></tr></thead>
+                        <tbody id="userResourcesTableBody"><tr><td colspan="4" class="users-empty">載入中…</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer"><button type="button" class="users-button users-button-secondary" data-bs-dismiss="modal">關閉</button></div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade users-modal" id="usersEditorModal" tabindex="-1" aria-labelledby="usersEditorTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -108,5 +195,5 @@
 </div>
 
 @section Scripts {
-    <script src="~/js/backend-users.js" asp-append-version="true"></script>
+    <script src="~/js/backend/users.js" asp-append-version="true"></script>
 }

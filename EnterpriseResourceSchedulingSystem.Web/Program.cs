@@ -26,6 +26,14 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     builder.Services.AddScoped<IAccountAuthenticationService, AccountAuthenticationService>();
     builder.Services.AddScoped<IUserRepository, UserRepository>();
     builder.Services.AddScoped<IUserService, UserService>();
+    builder.Services.AddScoped<IIdentityTypeRepository, IdentityTypeRepository>();
+    builder.Services.AddScoped<IIdentityTypeService, IdentityTypeService>();
+    builder.Services.AddScoped<IUserResourceRepository, UserResourceRepository>();
+    builder.Services.AddScoped<IUserResourceService, UserResourceService>();
+    builder.Services.AddScoped<IResourceRepository, ResourceRepository>();
+    builder.Services.AddScoped<IResourceService, ResourceService>();
+    builder.Services.AddScoped<IResourceFeeRepository, ResourceFeeRepository>();
+    builder.Services.AddScoped<IResourceFeeService, ResourceFeeService>();
 }
 
 builder.Services

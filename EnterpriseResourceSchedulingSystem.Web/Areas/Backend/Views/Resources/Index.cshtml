@@ -1,0 +1,171 @@
+@{
+    ViewData["Title"] = "設備與資源";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/backend/resources.css" asp-append-version="true" />
+}
+
+<main id="resourcesPage" class="resources-page" aria-label="設備與資源管理"
+      data-api-url="@Url.Content("~/api/resources")"
+      data-identity-api-url="@Url.Content("~/api/users/identity-types")">
+    @Html.AntiForgeryToken()
+
+    <section class="resources-card" aria-label="設備與資源資料表">
+        <form id="resourcesSearchForm" class="resources-filter" autocomplete="off">
+            <div class="resources-filter-field resources-filter-search">
+                <label for="resourcesKeyword">設備／資源搜尋</label>
+                <div class="resources-search-input">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input id="resourcesKeyword" maxlength="100" placeholder="輸入設備或資源名稱" />
+                </div>
+            </div>
+            <div class="resources-filter-actions">
+                <button type="submit" class="resources-button resources-button-search"><i class="bi bi-search" aria-hidden="true"></i>查詢</button>
+                <button id="clearResourcesSearchButton" type="button" class="resources-button resources-button-secondary">清除</button>
+            </div>
+            <button id="addResourceButton" type="button" class="resources-button resources-button-primary resources-filter-add">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>新增設備／資源
+            </button>
+        </form>
+
+        <div class="resources-feedback" id="resourcesFeedback" role="status" aria-live="polite" hidden></div>
+        <div class="resources-table-wrapper">
+            <div class="table-responsive" tabindex="0" role="region" aria-label="設備與資源資料表，可水平捲動">
+                <table class="table resources-table align-middle mb-0">
+                    <caption class="visually-hidden">設備與資源清單，包含使用人數上限、說明、建立資訊與管理操作。</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col" class="resources-number-column">序號</th>
+                            <th scope="col">設備／資源名稱</th>
+                            <th scope="col">使用人數上限</th>
+                            <th scope="col">說明</th>
+                            <th scope="col">建立人員</th>
+                            <th scope="col">建立時間</th>
+                            <th scope="col" class="resources-action-column">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resourcesTableBody">
+                        <tr><td colspan="7" class="resources-empty">載入設備／資源資料中…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <footer class="resources-footer">
+            <span id="resourcesResultCount" aria-live="polite">共 0 筆</span>
+            <nav id="resourcesPagination" aria-label="設備與資源分頁"></nav>
+        </footer>
+    </section>
+</main>
+
+<div class="modal fade resources-modal" id="resourceEditorModal" tabindex="-1" aria-labelledby="resourceEditorTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="resourceEditorForm" class="modal-content" autocomplete="off">
+            <div class="modal-header">
+                <h2 id="resourceEditorTitle" class="modal-title fs-5">新增設備／資源</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="resourceEditorError" class="resources-alert resources-alert-error" role="alert" hidden></div>
+                <div class="resources-form-field">
+                    <label for="resourceEditorName">設備／資源名稱 <span>*</span></label>
+                    <input id="resourceEditorName" maxlength="100" required placeholder="請輸入名稱" />
+                </div>
+                <div class="resources-form-field">
+                    <label for="resourceEditorMaxUsers">可使用人數上限 <span>*</span></label>
+                    <input id="resourceEditorMaxUsers" type="number" min="1" step="1" required value="1" />
+                </div>
+                <div class="resources-form-field">
+                    <label for="resourceEditorDescription">說明</label>
+                    <textarea id="resourceEditorDescription" maxlength="500" rows="3" placeholder="補充設備或資源說明（選填）"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="resources-button resources-button-secondary" data-bs-dismiss="modal">取消</button>
+                <button id="saveResourceButton" type="submit" class="resources-button resources-button-primary">新增</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade resources-modal" id="resourceDeleteModal" tabindex="-1" aria-labelledby="resourceDeleteTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="resourceDeleteTitle" class="modal-title fs-5">刪除設備／資源</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="resourceDeleteError" class="resources-alert resources-alert-error" role="alert" hidden></div>
+                <p>確定要刪除這項設備／資源？</p>
+                <p id="resourceDeleteName" class="fw-bold mb-0"></p>
+                <p class="resources-delete-note mb-0">已被費率、人員權限或排程資料使用的資源無法刪除。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="resources-button resources-button-secondary" data-bs-dismiss="modal">取消</button>
+                <button id="confirmDeleteResourceButton" type="button" class="resources-button resources-button-delete">確認刪除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade resources-modal resources-fees-modal" id="resourceFeesModal" tabindex="-1" aria-labelledby="resourceFeesTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h2 id="resourceFeesTitle" class="modal-title fs-5">身分費率</h2>
+                    <p id="resourceFeesResourceName" class="resources-fees-subtitle mb-0"></p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="resourceFeesFeedback" class="resources-alert resources-alert-error" role="alert" hidden></div>
+                <section id="resourceFeesListPanel" aria-label="身分費率清單">
+                    <div class="resources-fees-toolbar">
+                        <p class="resources-fees-hint mb-0">生效日期包含開始日與結束日；同一身分別的期間不可重疊。</p>
+                        <button id="addResourceFeeButton" type="button" class="resources-button resources-button-primary ms-auto"><i class="bi bi-plus-lg" aria-hidden="true"></i>新增身分費率</button>
+                    </div>
+                    <div class="table-responsive resources-modal-table-scroll" tabindex="0" role="region" aria-label="身分費率清單，可水平捲動">
+                        <table class="table resources-table align-middle mb-0">
+                            <thead><tr><th scope="col">設定版本</th><th scope="col">身分別</th><th scope="col">費用</th><th scope="col">生效開始</th><th scope="col">生效結束</th><th scope="col">建立人員</th><th scope="col" class="resources-action-column">操作</th></tr></thead>
+                            <tbody id="resourceFeesTableBody"><tr><td colspan="7" class="resources-empty">載入中…</td></tr></tbody>
+                        </table>
+                    </div>
+                </section>
+                <form id="resourceFeeEditorForm" class="resources-inline-editor" autocomplete="off" hidden>
+                    <h3 id="resourceFeeEditorTitle">新增身分費率</h3>
+                    <div id="resourceFeeEditorError" class="resources-alert resources-alert-error" role="alert" hidden></div>
+                    <div class="resources-form-grid">
+                        <div class="resources-form-field">
+                            <label for="resourceFeeIdentity">身分別 <span>*</span></label>
+                            <select id="resourceFeeIdentity" required><option value="">載入身分別中…</option></select>
+                        </div>
+                        <div class="resources-form-field">
+                            <label for="resourceFeeAmount">使用費用 <span>*</span></label>
+                            <input id="resourceFeeAmount" type="number" min="0" max="9999999999.99" step="0.01" required placeholder="0.00" />
+                        </div>
+                        <div class="resources-form-field">
+                            <label for="resourceFeeStart">生效開始日 <span>*</span></label>
+                            <input id="resourceFeeStart" type="date" required />
+                        </div>
+                        <div class="resources-form-field">
+                            <label for="resourceFeeEnd">生效結束日 <span>*</span></label>
+                            <input id="resourceFeeEnd" type="date" required />
+                        </div>
+                    </div>
+                    <div class="resources-editor-actions">
+                        <button id="cancelResourceFeeEditButton" type="button" class="resources-button resources-button-secondary">返回費率清單</button>
+                        <button id="saveResourceFeeButton" type="submit" class="resources-button resources-button-primary">新增</button>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer"><button type="button" class="resources-button resources-button-secondary" data-bs-dismiss="modal">關閉</button></div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/backend/resources.js" asp-append-version="true"></script>
+}

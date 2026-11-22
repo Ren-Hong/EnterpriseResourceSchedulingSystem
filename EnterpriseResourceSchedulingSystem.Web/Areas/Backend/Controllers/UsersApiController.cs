@@ -11,7 +11,7 @@ namespace EnterpriseResourceSchedulingSystem.Web.Areas.Backend.Controllers;
 [Route("api/users")]
 [Authorize(Policy = AuthorizationPolicies.BackendAccess)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class UsersApiController(IUserService users) : ControllerBase
+public sealed class UsersApiController(IUserService users, IUserResourceService userResources) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<UserPage>> GetPage(
@@ -74,6 +74,43 @@ public sealed class UsersApiController(IUserService users) : ControllerBase
         return deleted
             ? Ok(new { message = "人員已刪除。" })
             : Conflict(new { message = "人員不存在，或已被資源權限／預約資料引用，無法刪除。" });
+    }
+
+    [HttpGet("{userId:guid}/resources")]
+    public async Task<ActionResult<UserResourcePermissionList>> GetResourcePermissions(Guid userId, CancellationToken cancellationToken)
+    {
+        var result = await userResources.GetPermissionsAsync(userId, cancellationToken);
+        return result is null ? NotFound(new { message = "找不到這筆人員資料。" }) : Ok(result);
+    }
+
+    [HttpPost("{userId:guid}/resources")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AssignResource(Guid userId, [FromBody] AssignUserResourceRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await userResources.AssignAsync(userId, request.ResourceId, CurrentActor(), cancellationToken) switch
+            {
+                AssignResourceResult.Assigned => Ok(new { message = "資源使用權限已新增。" }),
+                AssignResourceResult.AlreadyAssigned => Conflict(new { message = "此人員已擁有該資源的使用權限。" }),
+                AssignResourceResult.NotFound => NotFound(new { message = "找不到人員或設備資源資料，請重新載入。" }),
+                _ => StatusCode(StatusCodes.Status500InternalServerError)
+            };
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpDelete("{userId:guid}/resources/{resourceId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevokeResource(Guid userId, Guid resourceId, CancellationToken cancellationToken)
+    {
+        var revoked = await userResources.RevokeAsync(userId, resourceId, cancellationToken);
+        return revoked
+            ? Ok(new { message = "資源使用權限已撤銷。" })
+            : NotFound(new { message = "找不到這筆資源使用權限。" });
     }
 
     private string CurrentActor() => User.Identity?.Name is { Length: > 0 } name ? name : "SYSTEM";
