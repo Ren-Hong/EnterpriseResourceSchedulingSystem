@@ -1,11 +1,12 @@
 using Dapper;
+using EnterpriseResourceSchedulingSystem.Application.Abstractions.Persistence;
 using EnterpriseResourceSchedulingSystem.Application.Abstractions.Repositories;
 using EnterpriseResourceSchedulingSystem.Domain.Entities;
 using Microsoft.Data.SqlClient;
 
 namespace EnterpriseResourceSchedulingSystem.Infrastructure.Repositories;
 
-public sealed class AccountRepository(string connectionString) : IAccountRepository
+public sealed class AccountRepository(IUnitOfWork unitOfWork) : IAccountRepository
 {
     public async Task<Account?> FindByUsernameAsync(string username, CancellationToken cancellationToken)
     {
@@ -16,8 +17,8 @@ public sealed class AccountRepository(string connectionString) : IAccountReposit
             WHERE a.NVCHUSERNAME = @Username;
             """;
 
-        await using var connection = new SqlConnection(connectionString);
-        var command = new CommandDefinition(sql, new { Username = username }, cancellationToken: cancellationToken);
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, new { Username = username }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         return await connection.QuerySingleOrDefaultAsync<Account>(command);
     }
 
@@ -29,8 +30,8 @@ public sealed class AccountRepository(string connectionString) : IAccountReposit
             WHERE UIDACCTID = @AccountId;
             """;
 
-        await using var connection = new SqlConnection(connectionString);
-        var command = new CommandDefinition(sql, new { AccountId = accountId }, cancellationToken: cancellationToken);
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, new { AccountId = accountId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         return await connection.QuerySingleOrDefaultAsync<string>(command);
     }
 
@@ -43,13 +44,13 @@ public sealed class AccountRepository(string connectionString) : IAccountReposit
               AND VCHPASSWORDHASH = @PasswordHash;
             """;
 
-        await using var connection = new SqlConnection(connectionString);
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var parameters = new
         {
             account.AccountId,
             PasswordHash = new DbString { Value = account.PasswordHash, IsAnsi = true, Length = 255 }
         };
-        var command = new CommandDefinition(sql, parameters, cancellationToken: cancellationToken);
+        var command = new CommandDefinition(sql, parameters, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         return await connection.ExecuteAsync(command) == 1;
     }
 }

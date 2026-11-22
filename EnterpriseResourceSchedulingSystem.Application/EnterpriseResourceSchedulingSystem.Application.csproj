@@ -3,6 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>7cd1a495-4f68-473d-ad82-3299d35a254c</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,5 +17,9 @@
     <Folder Include="Dtos\" />
     <Folder Include="Options\" />
     <Folder Include="Services\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="6.0.1" />
   </ItemGroup>
 </Project>

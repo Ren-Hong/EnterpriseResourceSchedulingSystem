@@ -1,11 +1,12 @@
 using Dapper;
+using EnterpriseResourceSchedulingSystem.Application.Abstractions.Persistence;
 using EnterpriseResourceSchedulingSystem.Application.Abstractions.Repositories;
 using EnterpriseResourceSchedulingSystem.Application.Dtos;
 using Microsoft.Data.SqlClient;
 
 namespace EnterpriseResourceSchedulingSystem.Infrastructure.Repositories;
 
-public sealed class UserRepository(string connectionString) : IUserRepository
+public sealed class UserRepository(IUnitOfWork unitOfWork) : IUserRepository
 {
     private const string FromAndFilter = """
         FROM dbo.ERSSUSERTBL AS u
@@ -17,8 +18,8 @@ public sealed class UserRepository(string connectionString) : IUserRepository
     public async Task<int> CountAsync(string? keyword, Guid? identityTypeId, CancellationToken cancellationToken)
     {
         var sql = "SELECT COUNT(*) " + FromAndFilter;
-        await using var connection = new SqlConnection(connectionString);
-        var command = new CommandDefinition(sql, new { Keyword = keyword, IdentityTypeId = identityTypeId }, cancellationToken: cancellationToken);
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, new { Keyword = keyword, IdentityTypeId = identityTypeId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         return await connection.ExecuteScalarAsync<int>(command);
     }
 
@@ -44,8 +45,8 @@ public sealed class UserRepository(string connectionString) : IUserRepository
             PageSize = pageSize
         };
 
-        await using var connection = new SqlConnection(connectionString);
-        var command = new CommandDefinition(sql, parameters, cancellationToken: cancellationToken);
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, parameters, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         return (await connection.QueryAsync<UserListItem>(command)).AsList();
     }
 
@@ -57,8 +58,8 @@ public sealed class UserRepository(string connectionString) : IUserRepository
             ORDER BY NVCHIDENTITYNAME;
             """;
 
-        await using var connection = new SqlConnection(connectionString);
-        var command = new CommandDefinition(sql, cancellationToken: cancellationToken);
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         return (await connection.QueryAsync<IdentityTypeOption>(command)).AsList();
     }
 
@@ -73,8 +74,8 @@ public sealed class UserRepository(string connectionString) : IUserRepository
             WHERE u.UIDUSERID = @UserId;
             """;
 
-        await using var connection = new SqlConnection(connectionString);
-        var command = new CommandDefinition(sql, new { UserId = userId }, cancellationToken: cancellationToken);
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, new { UserId = userId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         return await connection.QuerySingleOrDefaultAsync<UserListItem>(command);
     }
 
@@ -85,8 +86,8 @@ public sealed class UserRepository(string connectionString) : IUserRepository
             VALUES (@IdentityTypeId, @DisplayName, @Actor);
             """;
 
-        await using var connection = new SqlConnection(connectionString);
-        var command = new CommandDefinition(sql, new { IdentityTypeId = identityTypeId, DisplayName = displayName, Actor = actor }, cancellationToken: cancellationToken);
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, new { IdentityTypeId = identityTypeId, DisplayName = displayName, Actor = actor }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         await connection.ExecuteAsync(command);
     }
 
@@ -101,16 +102,16 @@ public sealed class UserRepository(string connectionString) : IUserRepository
             WHERE UIDUSERID = @UserId;
             """;
 
-        await using var connection = new SqlConnection(connectionString);
-        var command = new CommandDefinition(sql, new { UserId = userId, IdentityTypeId = identityTypeId, DisplayName = displayName, Actor = actor }, cancellationToken: cancellationToken);
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, new { UserId = userId, IdentityTypeId = identityTypeId, DisplayName = displayName, Actor = actor }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         return await connection.ExecuteAsync(command) == 1;
     }
 
     public async Task<bool> DeleteAsync(Guid userId, CancellationToken cancellationToken)
     {
         const string sql = "DELETE FROM dbo.ERSSUSERTBL WHERE UIDUSERID = @UserId;";
-        await using var connection = new SqlConnection(connectionString);
-        var command = new CommandDefinition(sql, new { UserId = userId }, cancellationToken: cancellationToken);
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, new { UserId = userId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
 
         try
         {
