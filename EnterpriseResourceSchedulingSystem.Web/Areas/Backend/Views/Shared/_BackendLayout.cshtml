@@ -1,10 +1,9 @@
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var isHome = ViewContext.RouteData.Values["controller"] is "Home"
-        && ViewContext.RouteData.Values["action"] is "Index";
 }
 
 @section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="~/css/backend-layout.css" asp-append-version="true" />
     @await RenderSectionAsync("Styles", required: false)
 }
@@ -16,14 +15,58 @@
     </header>
 
     <div class="backend-body">
-        <aside class="backend-sidebar">
-            <nav aria-label="後台功能選單">
-                <a asp-area="Backend" asp-controller="Home" asp-action="Index"
-                   class="backend-sidebar-item @(isHome ? "active" : null)"
-                   aria-current="@(isHome ? "page" : null)">後台首頁</a>
+        <aside class="backend-sidebar" aria-label="後台側邊導覽">
+            <div class="backend-sidebar-heading">功能選單</div>
+            <nav class="backend-sidebar-nav" aria-label="後台功能選單">
+                <div class="backend-nav-group">
+                    <span class="backend-nav-label">總覽</span>
+                    <a asp-area="Backend" asp-controller="Home" asp-action="Index"
+                       class="backend-sidebar-item @(ViewContext.RouteData.Values["controller"] is "Home" ? "active" : null)"
+                       aria-current="@(ViewContext.RouteData.Values["controller"] is "Home" ? "page" : null)">
+                        <i class="bi bi-speedometer2 backend-nav-icon" aria-hidden="true"></i>
+                        <span>後台首頁</span>
+                    </a>
+                </div>
+
+                <div class="backend-nav-group">
+                    <span class="backend-nav-label">人員與權限</span>
+                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
+                        <i class="bi bi-people backend-nav-icon" aria-hidden="true"></i><span>人員名單</span><span class="backend-nav-badge">規劃中</span>
+                    </span>
+                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
+                        <i class="bi bi-person-vcard backend-nav-icon" aria-hidden="true"></i><span>身分別設定</span><span class="backend-nav-badge">規劃中</span>
+                    </span>
+                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
+                        <i class="bi bi-shield-check backend-nav-icon" aria-hidden="true"></i><span>資源使用權限</span><span class="backend-nav-badge">規劃中</span>
+                    </span>
+                </div>
+
+                <div class="backend-nav-group">
+                    <span class="backend-nav-label">資源設定</span>
+                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
+                        <i class="bi bi-box-seam backend-nav-icon" aria-hidden="true"></i><span>設備與資源</span><span class="backend-nav-badge">規劃中</span>
+                    </span>
+                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
+                        <i class="bi bi-cash-coin backend-nav-icon" aria-hidden="true"></i><span>身分費率</span><span class="backend-nav-badge">規劃中</span>
+                    </span>
+                </div>
+
+                <div class="backend-nav-group">
+                    <span class="backend-nav-label">排程管理</span>
+                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
+                        <i class="bi bi-calendar-week backend-nav-icon" aria-hidden="true"></i><span>可預約時段</span><span class="backend-nav-badge">規劃中</span>
+                    </span>
+                    <span class="backend-sidebar-item is-pending" aria-disabled="true" title="功能頁面尚未建置">
+                        <i class="bi bi-clipboard-check backend-nav-icon" aria-hidden="true"></i><span>預約管理</span><span class="backend-nav-badge">規劃中</span>
+                    </span>
+                </div>
             </nav>
+            <div class="backend-sidebar-footer">
+                <span class="backend-status-dot" aria-hidden="true"></span>
+                <span>管理功能逐步建置中</span>
+            </div>
         </aside>
-        <main class="backend-content p-4">
+        <main class="backend-content p-4" id="main-content">
             @RenderBody()
         </main>
     </div>
