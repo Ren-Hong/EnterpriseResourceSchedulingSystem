@@ -11,9 +11,8 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
     public async Task<bool> UserExistsAsync(Guid userId, CancellationToken cancellationToken)
     {
         const string sql = "SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.ERSSUSERTBL WHERE UIDUSERID = @UserId) THEN 1 ELSE 0 END;";
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { UserId = userId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        return await connection.ExecuteScalarAsync<bool>(command);
+        return await unitOfWork.Connection.ExecuteScalarAsync<bool>(command);
     }
 
     public async Task<UserResourcePermissionList> GetPermissionsAsync(Guid userId, CancellationToken cancellationToken)
@@ -36,12 +35,10 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
             )
             ORDER BY r.NVCHRESNAME;
             """;
-
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var assignedCommand = new CommandDefinition(assignedSql, new { UserId = userId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         var availableCommand = new CommandDefinition(availableSql, new { UserId = userId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        var assigned = (await connection.QueryAsync<UserResourcePermissionItem>(assignedCommand)).AsList();
-        var available = (await connection.QueryAsync<ResourceOption>(availableCommand)).AsList();
+        var assigned = (await unitOfWork.Connection.QueryAsync<UserResourcePermissionItem>(assignedCommand)).AsList();
+        var available = (await unitOfWork.Connection.QueryAsync<ResourceOption>(availableCommand)).AsList();
         return new UserResourcePermissionList(assigned, available);
     }
 
@@ -51,11 +48,10 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
             INSERT INTO dbo.ERSSUSERRES (UIDUSERID, UIDRESID, VCHCREATEBY)
             VALUES (@UserId, @ResourceId, @Actor);
             """;
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { UserId = userId, ResourceId = resourceId, Actor = actor }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         try
         {
-            await connection.ExecuteAsync(command);
+            await unitOfWork.Connection.ExecuteAsync(command);
             return AssignResourceResult.Assigned;
         }
         catch (SqlException exception) when (exception.Number is 2601 or 2627)
@@ -71,8 +67,7 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
     public async Task<bool> RevokeAsync(Guid userId, Guid resourceId, CancellationToken cancellationToken)
     {
         const string sql = "DELETE FROM dbo.ERSSUSERRES WHERE UIDUSERID = @UserId AND UIDRESID = @ResourceId;";
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { UserId = userId, ResourceId = resourceId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        return await connection.ExecuteAsync(command) == 1;
+        return await unitOfWork.Connection.ExecuteAsync(command) == 1;
     }
 }

@@ -8,6 +8,8 @@ namespace EnterpriseResourceSchedulingSystem.Application.Abstractions.Persistenc
 /// </summary>
 public interface IUnitOfWork
 {
+    DbConnection Connection { get; }
+
     DbTransaction? Transaction { get; }
 
     Task<DbConnection> GetOpenConnectionAsync(CancellationToken cancellationToken);

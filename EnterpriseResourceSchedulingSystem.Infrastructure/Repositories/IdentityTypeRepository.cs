@@ -15,9 +15,8 @@ public sealed class IdentityTypeRepository(IUnitOfWork unitOfWork) : IIdentityTy
             FROM dbo.ERSSIDNTBL
             WHERE (@Keyword IS NULL OR NVCHIDENTITYNAME LIKE N'%' + @Keyword + N'%');
             """;
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { Keyword = keyword }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        return await connection.ExecuteScalarAsync<int>(command);
+        return await unitOfWork.Connection.ExecuteScalarAsync<int>(command);
     }
 
     public async Task<IReadOnlyList<IdentityTypeListItem>> GetPageAsync(
@@ -43,9 +42,8 @@ public sealed class IdentityTypeRepository(IUnitOfWork unitOfWork) : IIdentityTy
             Offset = (long)(pageNumber - 1) * pageSize,
             PageSize = pageSize
         };
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, parameters, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        return (await connection.QueryAsync<IdentityTypeListItem>(command)).AsList();
+        return (await unitOfWork.Connection.QueryAsync<IdentityTypeListItem>(command)).AsList();
     }
 
     public async Task<IdentityTypeListItem?> FindByIdAsync(Guid identityTypeId, CancellationToken cancellationToken)
@@ -59,9 +57,8 @@ public sealed class IdentityTypeRepository(IUnitOfWork unitOfWork) : IIdentityTy
             FROM dbo.ERSSIDNTBL
             WHERE UIDIDNTYPE = @IdentityTypeId;
             """;
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { IdentityTypeId = identityTypeId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        return await connection.QuerySingleOrDefaultAsync<IdentityTypeListItem>(command);
+        return await unitOfWork.Connection.QuerySingleOrDefaultAsync<IdentityTypeListItem>(command);
     }
 
     public async Task<bool> CreateAsync(string identityName, string? description, string actor, CancellationToken cancellationToken)
@@ -70,11 +67,10 @@ public sealed class IdentityTypeRepository(IUnitOfWork unitOfWork) : IIdentityTy
             INSERT INTO dbo.ERSSIDNTBL (NVCHIDENTITYNAME, NVCHDESCRIPTION, VCHCREATEBY)
             VALUES (@IdentityName, @Description, @Actor);
             """;
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { IdentityName = identityName, Description = description, Actor = actor }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         try
         {
-            await connection.ExecuteAsync(command);
+            await unitOfWork.Connection.ExecuteAsync(command);
             return true;
         }
         catch (SqlException exception) when (IsUniqueConstraintViolation(exception))
@@ -98,11 +94,10 @@ public sealed class IdentityTypeRepository(IUnitOfWork unitOfWork) : IIdentityTy
                 DTMUPDATEDAT = SYSUTCDATETIME()
             WHERE UIDIDNTYPE = @IdentityTypeId;
             """;
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { IdentityTypeId = identityTypeId, IdentityName = identityName, Description = description, Actor = actor }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         try
         {
-            return await connection.ExecuteAsync(command) == 1
+            return await unitOfWork.Connection.ExecuteAsync(command) == 1
                 ? IdentityTypeUpdateResult.Updated
                 : IdentityTypeUpdateResult.NotFound;
         }
@@ -115,11 +110,10 @@ public sealed class IdentityTypeRepository(IUnitOfWork unitOfWork) : IIdentityTy
     public async Task<IdentityTypeDeleteResult> DeleteAsync(Guid identityTypeId, CancellationToken cancellationToken)
     {
         const string sql = "DELETE FROM dbo.ERSSIDNTBL WHERE UIDIDNTYPE = @IdentityTypeId;";
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { IdentityTypeId = identityTypeId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         try
         {
-            return await connection.ExecuteAsync(command) == 1
+            return await unitOfWork.Connection.ExecuteAsync(command) == 1
                 ? IdentityTypeDeleteResult.Deleted
                 : IdentityTypeDeleteResult.NotFound;
         }

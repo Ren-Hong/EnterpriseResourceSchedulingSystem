@@ -73,9 +73,8 @@
                     <input id="resourceVersionStart" type="date" required />
                 </div>
                 <div id="resourceVersionEndField" class="resources-form-field" hidden>
-                    <label for="resourceVersionEnd">新版本生效迄日</label>
-                    <input id="resourceVersionEnd" type="date" />
-                    <small class="text-muted">留白代表持續有效。</small>
+                    <label for="resourceVersionEnd">新版本生效迄日 <span>*</span></label>
+                    <input id="resourceVersionEnd" type="date" required />
                 </div>
                 <div class="resources-form-field">
                     <label for="resourceEditorName">設備／資源名稱 <span>*</span></label>
@@ -186,4 +185,8 @@
 @section Scripts {
     <script src="~/js/backend/resources.js" asp-append-version="true"></script>
 }
+
+
+
+
 

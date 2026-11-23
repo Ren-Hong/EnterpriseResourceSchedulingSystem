@@ -328,7 +328,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
         const today = todayTaipeiDate();
-        const version = selectedVersion || activeVersions.find(item => item.effectiveStart <= today && (!item.effectiveEnd || item.effectiveEnd >= today)) || activeVersions[0];
+        const version = selectedVersion || activeVersions.find(item => item.effectiveStart <= today && item.effectiveEnd >= today) || activeVersions[0];
         if (!version) {
             setFeedback("resourcesFeedback", "目前沒有資源設定版本。");
             return;
@@ -337,7 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const latestConfigNo = Math.max(0, ...activeVersions.map(item => item.resourceConfigNo));
         activeFeeEditable = version.resourceConfigNo === latestConfigNo;
         byId("resourceFeesTitle").textContent = activeFeeEditable ? "管理身分費率" : "查看歷年身分費率";
-        byId("resourceFeesResourceName").textContent = `${resource.resourceName}｜第 ${version.resourceConfigNo} 版｜${formatCalendarDate(version.effectiveStart)} ～ ${version.effectiveEnd ? formatCalendarDate(version.effectiveEnd) : "持續有效"}`;
+        byId("resourceFeesResourceName").textContent = `${resource.resourceName}｜第 ${version.resourceConfigNo} 版｜${formatCalendarDate(version.effectiveStart)} ～ ${formatCalendarDate(version.effectiveEnd)}`;
         byId("addResourceFeeButton").hidden = !activeFeeEditable;
         byId("resourceFeesListPanel").hidden = false;
         byId("resourceFeeEditorForm").hidden = true;
@@ -372,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 appendCell(row, `第 ${version.resourceConfigNo} 版`);
                 appendCell(row, version.resourceName);
                 appendCell(row, String(version.maxUsers));
-                appendCell(row, `${formatCalendarDate(version.effectiveStart)} ～ ${version.effectiveEnd ? formatCalendarDate(version.effectiveEnd) : "持續有效"}`);
+                appendCell(row, `${formatCalendarDate(version.effectiveStart)} ～ ${formatCalendarDate(version.effectiveEnd)}`);
                 appendCell(row, version.createdBy || "—");
                 const actions = document.createElement("td");
                 const feesButton = document.createElement("button");
@@ -453,10 +453,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const payload = {
             resourceName: byId("resourceEditorName").value.trim(),
             maxUsers: Number(byId("resourceEditorMaxUsers").value),
-            description: byId("resourceEditorDescription").value.trim() || null,
-            effectiveStart: editingResource ? byId("resourceVersionStart").value : null,
-            effectiveEnd: editingResource ? (byId("resourceVersionEnd").value || null) : null
+            description: byId("resourceEditorDescription").value.trim() || null
         };
+        if (editingResource) {
+            payload.effectiveStart = byId("resourceVersionStart").value;
+            payload.effectiveEnd = byId("resourceVersionEnd").value;
+        }
         const method = editingResource ? "PUT" : "POST";
         const url = editingResource ? `${apiUrl}/${encodeURIComponent(editingResource.resourceId)}` : apiUrl;
         setBusy(true);
@@ -524,3 +526,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
     loadPage();
 });
+

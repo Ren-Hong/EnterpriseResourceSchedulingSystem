@@ -6,9 +6,9 @@ namespace EnterpriseResourceSchedulingSystem.Web.Areas.Frontend.Controllers;
 
 [Area("Frontend")]
 [ApiController]
-[Route("api/schedule/filters")]
+[Route("api/schedule/options")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class ScheduleFiltersApiController(IResourceService resources, IUserService users) : ControllerBase
+public sealed class ScheduleApiController(IResourceService resources, IUserService users) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<ScheduleFilterOptions>> GetOptions(CancellationToken cancellationToken)

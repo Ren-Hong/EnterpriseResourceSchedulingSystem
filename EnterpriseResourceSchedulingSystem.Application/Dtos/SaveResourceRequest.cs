@@ -4,5 +4,5 @@ public sealed record SaveResourceRequest(
     string ResourceName,
     string? Description,
     int MaxUsers,
-    DateOnly? EffectiveStart = null,
-    DateOnly? EffectiveEnd = null);
+    DateOnly EffectiveStart = default,
+    DateOnly EffectiveEnd = default);

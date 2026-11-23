@@ -8,6 +8,6 @@ public sealed record ResourceFeeListItem(
     string IdentityName,
     decimal Fee,
     DateTime ConfigEffectiveStart,
-    DateTime? ConfigEffectiveEnd,
+    DateTime ConfigEffectiveEnd,
     string CreatedBy,
     DateTime CreatedAt);

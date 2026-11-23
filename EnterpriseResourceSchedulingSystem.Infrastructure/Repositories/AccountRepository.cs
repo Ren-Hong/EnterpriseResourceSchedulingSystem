@@ -16,10 +16,8 @@ public sealed class AccountRepository(IUnitOfWork unitOfWork) : IAccountReposito
             FROM dbo.ERSSACCTBL AS a
             WHERE a.NVCHUSERNAME = @Username;
             """;
-
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { Username = username }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        return await connection.QuerySingleOrDefaultAsync<Account>(command);
+        return await unitOfWork.Connection.QuerySingleOrDefaultAsync<Account>(command);
     }
 
     public async Task<string?> FindLevelAsync(Guid accountId, CancellationToken cancellationToken)
@@ -29,10 +27,8 @@ public sealed class AccountRepository(IUnitOfWork unitOfWork) : IAccountReposito
             FROM dbo.ERSSACCTBL
             WHERE UIDACCTID = @AccountId;
             """;
-
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { AccountId = accountId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        return await connection.QuerySingleOrDefaultAsync<string>(command);
+        return await unitOfWork.Connection.QuerySingleOrDefaultAsync<string>(command);
     }
 
     public async Task<bool> RecordSuccessfulLoginAsync(Account account, CancellationToken cancellationToken)
@@ -43,14 +39,12 @@ public sealed class AccountRepository(IUnitOfWork unitOfWork) : IAccountReposito
             WHERE UIDACCTID = @AccountId
               AND VCHPASSWORDHASH = @PasswordHash;
             """;
-
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var parameters = new
         {
             account.AccountId,
             PasswordHash = new DbString { Value = account.PasswordHash, IsAnsi = true, Length = 255 }
         };
         var command = new CommandDefinition(sql, parameters, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        return await connection.ExecuteAsync(command) == 1;
+        return await unitOfWork.Connection.ExecuteAsync(command) == 1;
     }
 }

@@ -7,6 +7,6 @@ public sealed record ResourceVersionListItem(
     string? Description,
     int MaxUsers,
     DateTime EffectiveStart,
-    DateTime? EffectiveEnd,
+    DateTime EffectiveEnd,
     string CreatedBy,
     DateTime CreatedAt);

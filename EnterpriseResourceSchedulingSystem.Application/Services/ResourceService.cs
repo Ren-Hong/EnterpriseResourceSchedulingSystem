@@ -22,9 +22,11 @@ public sealed class ResourceService(IResourceRepository resources, IUnitOfWork u
     public Task<IReadOnlyList<ResourceVersionListItem>> GetVersionsAsync(Guid resourceId, CancellationToken ct) => resources.GetVersionsAsync(resourceId, ct);
     public Task<ResourceSaveResult> CreateAsync(string name, string? description, int maxUsers, string actor, CancellationToken ct)
         => unitOfWork.ExecuteInTransactionAsync(token => resources.CreateAsync(NormalizeName(name), NormalizeDescription(description), NormalizeMaxUsers(maxUsers), NormalizeActor(actor), token), ct);
-    public Task<ResourceUpdateResult> UpdateAsync(Guid resourceId, string name, string? description, int maxUsers, DateOnly effectiveStart, DateOnly? effectiveEnd, string actor, CancellationToken ct)
+    public Task<ResourceUpdateResult> UpdateAsync(Guid resourceId, string name, string? description, int maxUsers, DateOnly effectiveStart, DateOnly effectiveEnd, string actor, CancellationToken ct)
     {
-        if (effectiveEnd.HasValue && effectiveEnd.Value < effectiveStart)
+        if (effectiveStart == default || effectiveEnd == default)
+            throw new ArgumentException("請填寫版本生效起日與迄日。", nameof(effectiveStart));
+        if (effectiveEnd < effectiveStart)
             throw new ArgumentException("新版本生效迄日不可早於生效起日。", nameof(effectiveEnd));
         return unitOfWork.ExecuteInTransactionAsync(token => resources.UpdateAsync(resourceId, NormalizeName(name), NormalizeDescription(description), NormalizeMaxUsers(maxUsers), effectiveStart, effectiveEnd, NormalizeActor(actor), token), ct);
     }
@@ -53,3 +55,6 @@ public sealed class ResourceService(IResourceRepository resources, IUnitOfWork u
         return string.IsNullOrEmpty(actor) ? "SYSTEM" : actor.Length <= 50 ? actor : actor[..50];
     }
 }
+
+
+

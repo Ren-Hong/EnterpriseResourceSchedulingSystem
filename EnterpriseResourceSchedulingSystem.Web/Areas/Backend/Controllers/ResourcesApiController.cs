@@ -59,7 +59,7 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
     {
         try
         {
-            return await resources.UpdateAsync(resourceId, request.ResourceName, request.Description, request.MaxUsers, request.EffectiveStart ?? DateOnly.FromDateTime(DateTime.UtcNow.AddHours(8)), request.EffectiveEnd, CurrentActor(), cancellationToken) switch
+            return await resources.UpdateAsync(resourceId, request.ResourceName, request.Description, request.MaxUsers, request.EffectiveStart, request.EffectiveEnd, CurrentActor(), cancellationToken) switch
             {
                 ResourceUpdateResult.Updated => Ok(new { message = "設備／資源資料已更新。" }),
                 ResourceUpdateResult.NotFound => NotFound(new { message = "找不到這筆設備／資源資料。" }),
@@ -146,3 +146,6 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
 
     private string CurrentActor() => User.Identity?.Name is { Length: > 0 } name ? name : "SYSTEM";
 }
+
+
+

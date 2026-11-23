@@ -22,9 +22,8 @@ public sealed class ResourceFeeRepository(IUnitOfWork unitOfWork) : IResourceFee
             WHERE c.UIDRESID = @ResourceId AND (@ResourceConfigId IS NULL OR c.UIDRESCFGID = @ResourceConfigId)
             ORDER BY c.NUMRESCFGNO DESC, i.NVCHIDENTITYNAME;
             """;
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { ResourceId = resourceId, ResourceConfigId = resourceConfigId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        return (await connection.QueryAsync<ResourceFeeListItem>(command)).AsList();
+        return (await unitOfWork.Connection.QueryAsync<ResourceFeeListItem>(command)).AsList();
     }
 
     public async Task<ResourceFeeSaveResult> CreateAsync(Guid resourceId, Guid resourceConfigId, Guid identityTypeId, decimal fee, string actor, CancellationToken cancellationToken)
@@ -38,11 +37,10 @@ public sealed class ResourceFeeRepository(IUnitOfWork unitOfWork) : IResourceFee
               AND EXISTS (SELECT 1 FROM dbo.ERSSIDNTBL WHERE UIDIDNTYPE=@IdentityTypeId);
             SELECT CAST(@@ROWCOUNT AS INT);
             """;
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { ResourceId = resourceId, ResourceConfigId = resourceConfigId, IdentityTypeId = identityTypeId, Fee = fee, Actor = actor }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         try
         {
-            var affected = await connection.ExecuteScalarAsync<int>(command);
+            var affected = await unitOfWork.Connection.ExecuteScalarAsync<int>(command);
             if (affected == 1) return ResourceFeeSaveResult.Saved;
             return await IdentityTypeExistsAsync(identityTypeId, cancellationToken) ? ResourceFeeSaveResult.ReferenceNotFound : ResourceFeeSaveResult.IdentityTypeNotFound;
         }
@@ -59,11 +57,10 @@ public sealed class ResourceFeeRepository(IUnitOfWork unitOfWork) : IResourceFee
               AND c.NUMRESCFGNO=(SELECT MAX(latest.NUMRESCFGNO) FROM dbo.ERSSRESCFGTBL latest WHERE latest.UIDRESID=@ResourceId)
               AND EXISTS (SELECT 1 FROM dbo.ERSSIDNTBL WHERE UIDIDNTYPE=@IdentityTypeId);
             """;
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { ResourceId = resourceId, ResourceConfigId = resourceConfigId, ResourceFeeId = resourceFeeId, IdentityTypeId = identityTypeId, Fee = fee, Actor = actor }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         try
         {
-            if (await connection.ExecuteAsync(command) == 1) return ResourceFeeSaveResult.Saved;
+            if (await unitOfWork.Connection.ExecuteAsync(command) == 1) return ResourceFeeSaveResult.Saved;
             return await IdentityTypeExistsAsync(identityTypeId, cancellationToken) ? ResourceFeeSaveResult.FeeNotFound : ResourceFeeSaveResult.IdentityTypeNotFound;
         }
         catch (SqlException exception) when (exception.Number is 2601 or 2627) { return ResourceFeeSaveResult.DuplicateIdentity; }
@@ -77,13 +74,12 @@ public sealed class ResourceFeeRepository(IUnitOfWork unitOfWork) : IResourceFee
             WHERE c.UIDRESID=@ResourceId AND c.UIDRESCFGID=@ResourceConfigId AND f.UIDRESFEEID=@ResourceFeeId
               AND c.NUMRESCFGNO=(SELECT MAX(latest.NUMRESCFGNO) FROM dbo.ERSSRESCFGTBL latest WHERE latest.UIDRESID=@ResourceId);
             """;
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        return await connection.ExecuteAsync(new CommandDefinition(sql, new { ResourceId = resourceId, ResourceConfigId = resourceConfigId, ResourceFeeId = resourceFeeId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken)) == 1 ? ResourceFeeDeleteResult.Deleted : ResourceFeeDeleteResult.NotFound;
+        return await unitOfWork.Connection.ExecuteAsync(new CommandDefinition(sql, new { ResourceId = resourceId, ResourceConfigId = resourceConfigId, ResourceFeeId = resourceFeeId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken)) == 1 ? ResourceFeeDeleteResult.Deleted : ResourceFeeDeleteResult.NotFound;
     }
 
     private async Task<bool> IdentityTypeExistsAsync(Guid identityTypeId, CancellationToken cancellationToken)
     {
-        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        return await connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.ERSSIDNTBL WHERE UIDIDNTYPE=@IdentityTypeId) THEN 1 ELSE 0 END;", new { IdentityTypeId = identityTypeId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken));
+        return await unitOfWork.Connection.ExecuteScalarAsync<bool>(new CommandDefinition("SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.ERSSIDNTBL WHERE UIDIDNTYPE=@IdentityTypeId) THEN 1 ELSE 0 END;", new { IdentityTypeId = identityTypeId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken));
     }
 }
+

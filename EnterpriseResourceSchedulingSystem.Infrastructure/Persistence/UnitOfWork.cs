@@ -8,6 +8,8 @@ public sealed class UnitOfWork(IDbConnectionFactory connectionFactory) : IUnitOf
     private readonly DbConnection _connection = connectionFactory.CreateErssConnection();
     private DbTransaction? _transaction;
 
+    public DbConnection Connection => _connection;
+
     public DbTransaction? Transaction => _transaction;
 
     public async Task<DbConnection> GetOpenConnectionAsync(CancellationToken cancellationToken)
