@@ -76,7 +76,7 @@
                     <label for="resourceVersionEnd">新版本生效迄日 <span>*</span></label>
                     <input id="resourceVersionEnd" type="date" required />
                 </div>
-                <div class="resources-form-field">
+                <div id="resourceEditorNameField" class="resources-form-field">
                     <label for="resourceEditorName">設備／資源名稱 <span>*</span></label>
                     <input id="resourceEditorName" maxlength="100" required placeholder="請輸入名稱" />
                 </div>
@@ -92,6 +92,28 @@
             <div class="modal-footer">
                 <button type="button" class="resources-button resources-button-secondary" data-bs-dismiss="modal">取消</button>
                 <button id="saveResourceButton" type="submit" class="resources-button resources-button-primary">新增</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade resources-modal" id="resourceMasterEditorModal" tabindex="-1" aria-labelledby="resourceMasterEditorTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <form id="resourceMasterEditorForm" class="modal-content" autocomplete="off">
+            <div class="modal-header">
+                <h2 id="resourceMasterEditorTitle" class="modal-title fs-5">編輯設備／資源主檔</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="resourceMasterEditorError" class="resources-alert resources-alert-error" role="alert" hidden></div>
+                <div class="resources-form-field">
+                    <label for="resourceMasterEditorName">設備／資源名稱 <span>*</span></label>
+                    <input id="resourceMasterEditorName" maxlength="100" required placeholder="請輸入名稱" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="resources-button resources-button-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="submit" class="resources-button resources-button-primary">儲存主檔</button>
             </div>
         </form>
     </div>

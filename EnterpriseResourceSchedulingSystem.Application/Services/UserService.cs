@@ -8,8 +8,8 @@ public sealed class UserService(IUserRepository users) : IUserService
 {
     public const int DefaultPageSize = 10;
 
-    public Task<IReadOnlyList<ScheduleUserOption>> GetAllForSchedulingAsync(CancellationToken cancellationToken)
-        => users.GetAllForSchedulingAsync(cancellationToken);
+    public Task<IReadOnlyList<ScheduleUserOption>> GetUserOptionsAsync(CancellationToken cancellationToken)
+        => users.GetUserOptionsAsync(cancellationToken);
 
     public async Task<UserPage> GetPageAsync(
         string? keyword,

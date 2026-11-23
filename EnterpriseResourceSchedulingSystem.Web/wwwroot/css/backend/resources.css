@@ -123,7 +123,7 @@
 .resources-table tbody tr:hover td { background: #fdf8fb; }
 .resources-table tbody tr:last-child td { border-bottom: 0; }
 .resources-number-column { width: 68px; text-align: center; color: #98798a !important; font-variant-numeric: tabular-nums; }
-.resources-action-column { width: 420px; text-align: right; }
+.resources-action-column { width: 520px; text-align: right; }
 .resources-name { color: #503446 !important; font-weight: 700; }
 .resources-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .resources-identity { display: inline-flex; padding: 4px 9px; border-radius: 999px; background: #f3e5ed; color: #7a3a5d; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }

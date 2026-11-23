@@ -4,7 +4,7 @@ namespace EnterpriseResourceSchedulingSystem.Application.Abstractions.Services;
 
 public interface IUserService
 {
-    Task<IReadOnlyList<ScheduleUserOption>> GetAllForSchedulingAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<ScheduleUserOption>> GetUserOptionsAsync(CancellationToken cancellationToken);
 
     Task<UserPage> GetPageAsync(
         string? keyword,

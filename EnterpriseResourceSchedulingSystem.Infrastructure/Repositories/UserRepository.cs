@@ -15,7 +15,7 @@ public sealed class UserRepository(IUnitOfWork unitOfWork) : IUserRepository
           AND (@IdentityTypeId IS NULL OR u.UIDIDNTYPE = @IdentityTypeId)
         """;
 
-    public async Task<IReadOnlyList<ScheduleUserOption>> GetAllForSchedulingAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<ScheduleUserOption>> GetUserOptionsAsync(CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT u.UIDUSERID AS UserId,

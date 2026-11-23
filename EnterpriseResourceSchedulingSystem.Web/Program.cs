@@ -31,6 +31,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
     builder.Services.AddScoped<IUserResourceRepository, UserResourceRepository>();
     builder.Services.AddScoped<IUserResourceService, UserResourceService>();
     builder.Services.AddScoped<IResourceRepository, ResourceRepository>();
+    builder.Services.AddScoped<IResourceConfigRepository, ResourceConfigRepository>();
     builder.Services.AddScoped<IResourceService, ResourceService>();
     builder.Services.AddScoped<IResourceFeeRepository, ResourceFeeRepository>();
     builder.Services.AddScoped<IResourceFeeService, ResourceFeeService>();

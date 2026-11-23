@@ -5,10 +5,10 @@ using EnterpriseResourceSchedulingSystem.Application.Dtos;
 
 namespace EnterpriseResourceSchedulingSystem.Application.Services;
 
-public sealed class ResourceService(IResourceRepository resources, IUnitOfWork unitOfWork) : IResourceService
+public sealed class ResourceService(IResourceRepository resources, IResourceConfigRepository resourceConfigs, IUnitOfWork unitOfWork) : IResourceService
 {
     private const int PageSize = 10;
-    public Task<IReadOnlyList<ScheduleResourceOption>> GetAllForSchedulingAsync(CancellationToken ct) => resources.GetAllForSchedulingAsync(ct);
+    public Task<IReadOnlyList<ScheduleResourceOption>> GetResourceOptionsAsync(CancellationToken ct) => resources.GetResourceOptionsAsync(ct);
     public async Task<ResourcePage> GetPageAsync(string? keyword, int pageNumber, CancellationToken ct)
     {
         keyword = string.IsNullOrWhiteSpace(keyword) ? null : keyword.Trim();
@@ -19,16 +19,31 @@ public sealed class ResourceService(IResourceRepository resources, IUnitOfWork u
         return new ResourcePage(items, actualPage, PageSize, totalCount, totalPages);
     }
     public Task<ResourceListItem?> FindByIdAsync(Guid resourceId, CancellationToken ct) => resources.FindByIdAsync(resourceId, ct);
-    public Task<IReadOnlyList<ResourceVersionListItem>> GetVersionsAsync(Guid resourceId, CancellationToken ct) => resources.GetVersionsAsync(resourceId, ct);
+    public Task<IReadOnlyList<ResourceVersionListItem>> GetVersionsAsync(Guid resourceId, CancellationToken ct) => resourceConfigs.GetVersionsAsync(resourceId, ct);
     public Task<ResourceSaveResult> CreateAsync(string name, string? description, int maxUsers, string actor, CancellationToken ct)
-        => unitOfWork.ExecuteInTransactionAsync(token => resources.CreateAsync(NormalizeName(name), NormalizeDescription(description), NormalizeMaxUsers(maxUsers), NormalizeActor(actor), token), ct);
-    public Task<ResourceUpdateResult> UpdateAsync(Guid resourceId, string name, string? description, int maxUsers, DateOnly effectiveStart, DateOnly effectiveEnd, string actor, CancellationToken ct)
+    {
+        var resourceId = Guid.NewGuid();
+        var normalizedName = NormalizeName(name);
+        var normalizedDescription = NormalizeDescription(description);
+        var normalizedMaxUsers = NormalizeMaxUsers(maxUsers);
+        var normalizedActor = NormalizeActor(actor);
+        return unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            var result = await resources.CreateAsync(resourceId, normalizedName, normalizedDescription, normalizedMaxUsers, normalizedActor, token);
+            if (result == ResourceSaveResult.Saved)
+                await resourceConfigs.CreateInitialVersionAsync(resourceId, normalizedName, normalizedDescription, normalizedMaxUsers, normalizedActor, token);
+            return result;
+        }, ct);
+    }
+    public Task<ResourceUpdateResult> UpdateAsync(Guid resourceId, string name, string actor, CancellationToken ct)
+        => unitOfWork.ExecuteInTransactionAsync(token => resources.UpdateAsync(resourceId, NormalizeName(name), NormalizeActor(actor), token), ct);
+    public Task<ResourceVersionCreateResult> CreateVersionAsync(Guid resourceId, string? description, int maxUsers, DateOnly effectiveStart, DateOnly effectiveEnd, string actor, CancellationToken ct)
     {
         if (effectiveStart == default || effectiveEnd == default)
             throw new ArgumentException("請填寫版本生效起日與迄日。", nameof(effectiveStart));
         if (effectiveEnd < effectiveStart)
             throw new ArgumentException("新版本生效迄日不可早於生效起日。", nameof(effectiveEnd));
-        return unitOfWork.ExecuteInTransactionAsync(token => resources.UpdateAsync(resourceId, NormalizeName(name), NormalizeDescription(description), NormalizeMaxUsers(maxUsers), effectiveStart, effectiveEnd, NormalizeActor(actor), token), ct);
+        return unitOfWork.ExecuteInTransactionAsync(token => resourceConfigs.CreateVersionAsync(resourceId, NormalizeDescription(description), NormalizeMaxUsers(maxUsers), effectiveStart, effectiveEnd, NormalizeActor(actor), token), ct);
     }
     public Task<ResourceDeleteResult> DeleteAsync(Guid resourceId, CancellationToken ct) => resources.DeleteAsync(resourceId, ct);
 

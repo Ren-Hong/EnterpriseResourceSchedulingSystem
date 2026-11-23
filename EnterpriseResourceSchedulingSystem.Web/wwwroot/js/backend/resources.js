@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const token = root.querySelector('input[name="__RequestVerificationToken"]')?.value ?? "";
     const tableBody = byId("resourcesTableBody");
     const resourceEditorModal = new bootstrap.Modal(byId("resourceEditorModal"));
+    const resourceMasterEditorModal = new bootstrap.Modal(byId("resourceMasterEditorModal"));
     const resourceDeleteModal = new bootstrap.Modal(byId("resourceDeleteModal"));
     const resourceFeesModal = new bootstrap.Modal(byId("resourceFeesModal"));
     const resourceVersionsModal = new bootstrap.Modal(byId("resourceVersionsModal"));
@@ -18,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     let busy = false;
     let editingResource = null;
+    let editingMasterResource = null;
     let deletingResource = null;
     let activeResource = null;
     let activeFeeConfigId = null;
@@ -131,12 +133,17 @@ document.addEventListener("DOMContentLoaded", () => {
             edit.className = "resources-button resources-button-edit";
             edit.innerHTML = '<i class="bi bi-plus-square" aria-hidden="true"></i>新版本';
             edit.addEventListener("click", () => openResourceEditor(resource));
+            const editMaster = document.createElement("button");
+            editMaster.type = "button";
+            editMaster.className = "resources-button resources-button-secondary";
+            editMaster.innerHTML = '<i class="bi bi-pencil-square" aria-hidden="true"></i>編輯主檔';
+            editMaster.addEventListener("click", () => openMasterEditor(resource));
             const remove = document.createElement("button");
             remove.type = "button";
             remove.className = "resources-button resources-button-delete";
             remove.innerHTML = '<i class="bi bi-trash3" aria-hidden="true"></i>刪除';
             remove.addEventListener("click", () => openResourceDelete(resource));
-            group.append(versions, fees, edit, remove);
+            group.append(versions, fees, edit, editMaster, remove);
             actions.append(group);
             row.append(actions);
             tableBody.append(row);
@@ -211,11 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function nextVersionStart() {
         const today = todayTaipeiDate();
         const parts = today.split("-").map(Number);
-        const tomorrow = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1)).toISOString().slice(0, 10);
-        const latest = activeVersions[0]?.effectiveStart;
-        if (!latest || latest < tomorrow) return tomorrow;
-        const latestParts = latest.split("-").map(Number);
-        return new Date(Date.UTC(latestParts[0], latestParts[1] - 1, latestParts[2] + 1)).toISOString().slice(0, 10);
+        return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1)).toISOString().slice(0, 10);
     }
     let activeVersions = [];
     function openResourceEditor(resource = null) {
@@ -226,9 +229,12 @@ document.addEventListener("DOMContentLoaded", () => {
         byId("resourceVersionStart").disabled = !resource;
         byId("resourceVersionStart").value = resource ? nextVersionStart() : "";
         byId("resourceVersionEndField").hidden = !resource;
+        byId("resourceVersionEnd").disabled = !resource;
         byId("resourceVersionEnd").value = "";
         byId("saveResourceButton").textContent = resource ? "建立新版本" : "新增設備／資源";
         byId("resourceEditorName").value = resource?.resourceName ?? "";
+        byId("resourceEditorNameField").hidden = Boolean(resource);
+        byId("resourceEditorName").disabled = Boolean(resource);
         byId("resourceEditorMaxUsers").value = resource?.maxUsers ?? 1;
         byId("resourceEditorDescription").value = resource?.description ?? "";
         byId("resourceEditorError").hidden = true;
@@ -242,6 +248,15 @@ document.addEventListener("DOMContentLoaded", () => {
         byId("resourceDeleteName").textContent = resource.resourceName;
         byId("resourceDeleteError").hidden = true;
         resourceDeleteModal.show();
+    }
+
+    function openMasterEditor(resource) {
+        if (busy) return;
+        editingMasterResource = resource;
+        byId("resourceMasterEditorName").value = resource.resourceName ?? "";
+        byId("resourceMasterEditorError").hidden = true;
+        resourceMasterEditorModal.show();
+        window.setTimeout(() => byId("resourceMasterEditorName").focus(), 150);
     }
 
     async function loadIdentityTypes() {
@@ -450,17 +465,22 @@ document.addEventListener("DOMContentLoaded", () => {
         event.preventDefault();
         const form = event.currentTarget;
         if (busy || !form.reportValidity()) return;
-        const payload = {
-            resourceName: byId("resourceEditorName").value.trim(),
-            maxUsers: Number(byId("resourceEditorMaxUsers").value),
-            description: byId("resourceEditorDescription").value.trim() || null
-        };
+        const payload = editingResource
+            ? {
+                maxUsers: Number(byId("resourceEditorMaxUsers").value),
+                description: byId("resourceEditorDescription").value.trim() || null
+            }
+            : {
+                resourceName: byId("resourceEditorName").value.trim(),
+                maxUsers: Number(byId("resourceEditorMaxUsers").value),
+                description: byId("resourceEditorDescription").value.trim() || null
+            };
         if (editingResource) {
             payload.effectiveStart = byId("resourceVersionStart").value;
             payload.effectiveEnd = byId("resourceVersionEnd").value;
         }
-        const method = editingResource ? "PUT" : "POST";
-        const url = editingResource ? `${apiUrl}/${encodeURIComponent(editingResource.resourceId)}` : apiUrl;
+        const method = "POST";
+        const url = editingResource ? `${apiUrl}/${encodeURIComponent(editingResource.resourceId)}/versions` : apiUrl;
         setBusy(true);
         try {
             const result = await request(url, method, payload);
@@ -469,6 +489,27 @@ document.addEventListener("DOMContentLoaded", () => {
             await loadPage(editingResource ? state.page : 1);
         } catch (error) {
             const message = byId("resourceEditorError");
+            message.textContent = error.message;
+            message.hidden = false;
+        } finally {
+            setBusy(false);
+        }
+    });
+
+    byId("resourceMasterEditorForm").addEventListener("submit", async event => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        if (busy || !editingMasterResource || !form.reportValidity()) return;
+        setBusy(true);
+        try {
+            const result = await request(`${apiUrl}/${encodeURIComponent(editingMasterResource.resourceId)}`, "PUT", {
+                resourceName: byId("resourceMasterEditorName").value.trim()
+            });
+            resourceMasterEditorModal.hide();
+            setFeedback("resourcesFeedback", result.message || "設備／資源主檔已更新。", true);
+            await loadPage(state.page);
+        } catch (error) {
+            const message = byId("resourceMasterEditorError");
             message.textContent = error.message;
             message.hidden = false;
         } finally {

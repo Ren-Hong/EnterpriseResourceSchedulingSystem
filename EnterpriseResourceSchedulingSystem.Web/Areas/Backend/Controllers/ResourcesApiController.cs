@@ -55,17 +55,34 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
 
     [HttpPut("{resourceId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Update(Guid resourceId, [FromBody] SaveResourceRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Update(Guid resourceId, [FromBody] UpdateResourceRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            return await resources.UpdateAsync(resourceId, request.ResourceName, request.Description, request.MaxUsers, request.EffectiveStart, request.EffectiveEnd, CurrentActor(), cancellationToken) switch
+            return await resources.UpdateAsync(resourceId, request.ResourceName, CurrentActor(), cancellationToken) switch
             {
-                ResourceUpdateResult.Updated => Ok(new { message = "設備／資源資料已更新。" }),
+                ResourceUpdateResult.Updated => Ok(new { message = "設備／資源主檔已更新。" }),
                 ResourceUpdateResult.NotFound => NotFound(new { message = "找不到這筆設備／資源資料。" }),
                 ResourceUpdateResult.DuplicateName => Conflict(new { message = "此設備／資源名稱已存在。" }),
-                ResourceUpdateResult.InvalidEffectiveStart => Conflict(new { message = "新版本生效日起必須晚於目前版本的生效起日。" }),
-                ResourceUpdateResult.InvalidEffectivePeriod => BadRequest(new { message = "新版本生效迄日不可早於生效起日。" }),
+                _ => StatusCode(StatusCodes.Status500InternalServerError)
+            };
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpPost("{resourceId:guid}/versions")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CreateVersion(Guid resourceId, [FromBody] SaveResourceVersionRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await resources.CreateVersionAsync(resourceId, request.Description, request.MaxUsers, request.EffectiveStart, request.EffectiveEnd, CurrentActor(), cancellationToken) switch
+            {
+                ResourceVersionCreateResult.Created => Ok(new { message = "設備／資源新版本已建立。" }),
+                ResourceVersionCreateResult.NotFound => NotFound(new { message = "找不到這筆設備／資源資料。" }),
                 _ => StatusCode(StatusCodes.Status500InternalServerError)
             };
         }

@@ -13,8 +13,8 @@ public sealed class ScheduleApiController(IResourceService resources, IUserServi
     [HttpGet]
     public async Task<ActionResult<ScheduleFilterOptions>> GetOptions(CancellationToken cancellationToken)
     {
-        var resourceOptions = await resources.GetAllForSchedulingAsync(cancellationToken);
-        var userOptions = await users.GetAllForSchedulingAsync(cancellationToken);
+        var resourceOptions = await resources.GetResourceOptionsAsync(cancellationToken);
+        var userOptions = await users.GetUserOptionsAsync(cancellationToken);
         return Ok(new ScheduleFilterOptions(resourceOptions, userOptions));
     }
 }
