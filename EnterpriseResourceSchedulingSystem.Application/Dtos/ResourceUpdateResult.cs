@@ -4,5 +4,7 @@ public enum ResourceUpdateResult
 {
     Updated,
     NotFound,
-    DuplicateName
+    DuplicateName,
+    InvalidEffectiveStart,
+    InvalidEffectivePeriod
 }

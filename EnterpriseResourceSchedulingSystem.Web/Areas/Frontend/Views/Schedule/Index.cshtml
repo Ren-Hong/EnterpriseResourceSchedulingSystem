@@ -1,0 +1,127 @@
+@{
+    ViewData["Title"] = "排程主頁";
+}
+
+@section Styles {
+    <link rel="stylesheet" href="~/css/frontend/scheduler.css" asp-append-version="true" />
+}
+
+<main id="frontendScheduler" class="frontend-scheduler" data-filters-url="@Url.Content("~/api/schedule/filters")" aria-label="企業資源排程">
+    <aside class="scheduler-sidebar" aria-label="設備與人員條件">
+        <div class="scheduler-sidebar-heading">
+            <div>
+                <span class="scheduler-eyebrow">預約條件</span>
+                <h1>排程篩選</h1>
+            </div>
+            <button id="clearSchedulerFilters" class="scheduler-icon-button" type="button" aria-label="清除條件" title="清除條件">
+                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <div class="scheduler-filter-scroll">
+            <div class="accordion scheduler-filter-accordion" id="scheduleFilterAccordion" aria-label="排程條件">
+                <section class="accordion-item scheduler-filter-item">
+                    <h2 class="accordion-header" id="resourceFilterTitle">
+                        <button class="accordion-button scheduler-accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#resourceFilterPanel" aria-expanded="true" aria-controls="resourceFilterPanel">
+                            <span class="scheduler-filter-icon"><i class="bi bi-building-gear" aria-hidden="true"></i></span>
+                            <span class="scheduler-accordion-title">設備條件</span>
+                            <span id="resourceFilterCount" class="scheduler-count" aria-live="polite">0 / 0</span>
+                        </button>
+                    </h2>
+                    <div id="resourceFilterPanel" class="accordion-collapse collapse show" aria-labelledby="resourceFilterTitle" data-bs-parent="#scheduleFilterAccordion">
+                        <div class="accordion-body scheduler-accordion-body">
+                            <label class="scheduler-search">
+                                <i class="bi bi-search" aria-hidden="true"></i>
+                                <input id="resourceSearch" type="search" placeholder="搜尋設備或資源" autocomplete="off" aria-label="搜尋設備或資源" />
+                            </label>
+                            <div class="scheduler-filter-actions">
+                                <button type="button" data-select-group="resources" data-select-action="all">全選</button>
+                                <button type="button" data-select-group="resources" data-select-action="none">清除</button>
+                            </div>
+                            <div id="resourceFilterList" class="scheduler-option-list" role="group" aria-label="設備資源條件" aria-busy="true"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="accordion-item scheduler-filter-item">
+                    <h2 class="accordion-header" id="peopleFilterTitle">
+                        <button class="accordion-button scheduler-accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#peopleFilterPanel" aria-expanded="false" aria-controls="peopleFilterPanel">
+                            <span class="scheduler-filter-icon scheduler-filter-icon-people"><i class="bi bi-people" aria-hidden="true"></i></span>
+                            <span class="scheduler-accordion-title">人員條件</span>
+                            <span id="peopleFilterCount" class="scheduler-count" aria-live="polite">0 / 0</span>
+                        </button>
+                    </h2>
+                    <div id="peopleFilterPanel" class="accordion-collapse collapse" aria-labelledby="peopleFilterTitle" data-bs-parent="#scheduleFilterAccordion">
+                        <div class="accordion-body scheduler-accordion-body">
+                            <label class="scheduler-search">
+                                <i class="bi bi-search" aria-hidden="true"></i>
+                                <input id="peopleSearch" type="search" placeholder="搜尋人員姓名或身分別" autocomplete="off" aria-label="搜尋人員姓名或身分別" />
+                            </label>
+                            <div class="scheduler-filter-actions">
+                                <button type="button" data-select-group="people" data-select-action="all">全選</button>
+                                <button type="button" data-select-group="people" data-select-action="none">清除</button>
+                            </div>
+                            <div id="peopleFilterList" class="scheduler-option-list" role="group" aria-label="人員條件" aria-busy="true"></div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </div>
+    </aside>
+
+    <section class="scheduler-calendar-column" aria-label="排程日曆">
+        <div class="scheduler-calendar-card">
+            <div id="scheduleCalendar" aria-label="資源排程日曆"></div>
+            <div id="calendarLoadMessage" class="calendar-load-message" role="status" hidden></div>
+        </div>
+    </section>
+
+    <aside class="scheduler-information" aria-label="相關資訊">
+        <div class="scheduler-information-heading">
+            <span class="scheduler-eyebrow">DETAILS</span>
+            <h2>相關資訊</h2>
+        </div>
+        <div class="scheduler-tabs" role="tablist" aria-label="排程相關資訊">
+            <button class="scheduler-tab is-active" id="resourceInfoTab" type="button" role="tab" aria-selected="true" aria-controls="resourceInfoPanel" data-scheduler-tab="resourceInfoPanel">資源資訊</button>
+            <button class="scheduler-tab" id="scheduleInfoTab" type="button" role="tab" aria-selected="false" aria-controls="scheduleInfoPanel" tabindex="-1" data-scheduler-tab="scheduleInfoPanel">時段資訊</button>
+            <button class="scheduler-tab" id="myBookingsTab" type="button" role="tab" aria-selected="false" aria-controls="myBookingsPanel" tabindex="-1" data-scheduler-tab="myBookingsPanel">我的預約</button>
+        </div>
+        <div class="scheduler-tab-content">
+            <section id="resourceInfoPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="resourceInfoTab">
+                <div class="scheduler-detail-empty">
+                    <span class="scheduler-detail-empty-icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
+                    <h3>尚未選擇設備資源</h3>
+                    <p>選擇左側設備後，這裡會顯示設備說明、可使用人數與使用費率。</p>
+                </div>
+                <div class="scheduler-info-list">
+                    <div><span>選取日期</span><strong id="selectedCalendarDate">尚未選擇</strong></div>
+                    <div><span>目前資源</span><strong>尚未選擇</strong></div>
+                    <div><span>使用權限</span><strong class="scheduler-status-muted">待確認</strong></div>
+                </div>
+            </section>
+            <section id="scheduleInfoPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="scheduleInfoTab" hidden>
+                <div class="scheduler-detail-empty">
+                    <span class="scheduler-detail-empty-icon"><i class="bi bi-calendar2-week" aria-hidden="true"></i></span>
+                    <h3>選取一個排程時段</h3>
+                    <p>選取日曆中的時段後，查看可用名額、適用費率與預約狀態。</p>
+                </div>
+            </section>
+            <section id="myBookingsPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="myBookingsTab" hidden>
+                <div class="scheduler-detail-empty">
+                    <span class="scheduler-detail-empty-icon"><i class="bi bi-journal-check" aria-hidden="true"></i></span>
+                    <h3>我的預約</h3>
+                    <p>登入人員的預約清單將顯示在這裡。</p>
+                </div>
+            </section>
+        </div>
+        <div class="scheduler-information-footer">
+            <i class="bi bi-shield-check" aria-hidden="true"></i>
+            <span>預約時會確認資源使用權限與剩餘名額。</span>
+        </div>
+    </aside>
+</main>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script src="~/js/frontend/schedule.js" asp-append-version="true"></script>
+}

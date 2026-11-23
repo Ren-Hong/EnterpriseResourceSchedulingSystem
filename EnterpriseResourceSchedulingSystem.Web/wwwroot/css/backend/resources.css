@@ -123,14 +123,14 @@
 .resources-table tbody tr:hover td { background: #fdf8fb; }
 .resources-table tbody tr:last-child td { border-bottom: 0; }
 .resources-number-column { width: 68px; text-align: center; color: #98798a !important; font-variant-numeric: tabular-nums; }
-.resources-action-column { width: 190px; text-align: right; }
+.resources-action-column { width: 420px; text-align: right; }
 .resources-name { color: #503446 !important; font-weight: 700; }
 .resources-date { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .resources-identity { display: inline-flex; padding: 4px 9px; border-radius: 999px; background: #f3e5ed; color: #7a3a5d; font-size: 0.75rem; font-weight: 700; white-space: nowrap; }
 .resources-identity-unassigned { background: #f3f0f2; color: #857983; }
-.resources-row-actions { display: flex; justify-content: flex-end; gap: 7px; }
+.resources-row-actions { display: flex; justify-content: flex-end; flex-wrap: nowrap; gap: 7px; white-space: nowrap; }
 .resources-row-actions form { margin: 0; }
-.resources-row-actions .resources-button { min-height: 34px; padding: 6px 9px; font-size: 0.77rem; }
+.resources-row-actions .resources-button { min-height: 34px; padding: 6px 9px; font-size: 0.77rem; white-space: nowrap; flex: 0 0 auto; }
 .resources-button-edit { border-color: #e2c9d5; background: #f8edf3; color: #713c59; }
 .resources-button-edit:hover { background: #f0dce7; color: #5d2f48; }
 .resources-button-fees { border-color: #dfc5d2; background: #fff; color: #795267; }
@@ -237,3 +237,14 @@
     .resources-fees-toolbar { align-items: stretch; flex-direction: column; }
     .resources-fees-toolbar .resources-button { margin-left: 0 !important; }
 }
+
+
+.resources-version-table { min-width: 900px; }
+.resources-version-table th,
+.resources-version-table td { white-space: nowrap; }
+.resources-version-table th:nth-child(1) { width: 90px; }
+.resources-version-table th:nth-child(2) { min-width: 170px; }
+.resources-version-table th:nth-child(3) { width: 110px; }
+.resources-version-table th:nth-child(4) { min-width: 250px; }
+.resources-version-table th:nth-child(5) { min-width: 150px; }
+.resources-version-action-column { width: 150px; min-width: 150px; text-align: right; }

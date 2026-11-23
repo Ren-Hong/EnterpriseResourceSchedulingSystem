@@ -1,3 +1,8 @@
 namespace EnterpriseResourceSchedulingSystem.Application.Dtos;
 
-public sealed record SaveResourceRequest(string ResourceName, string? Description, int MaxUsers);
+public sealed record SaveResourceRequest(
+    string ResourceName,
+    string? Description,
+    int MaxUsers,
+    DateOnly? EffectiveStart = null,
+    DateOnly? EffectiveEnd = null);

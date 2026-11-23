@@ -235,7 +235,7 @@ BEGIN
 END;
 GO
 
-PRINT N'若尚未套用排程版本 schema，請接著執行 Persistence/UpgradeSchedulingSchema.sql。';
+PRINT N'請接著依序執行 Persistence/UpgradeSchedulingSchema.sql 與 Persistence/UpgradeResourceFeeVersioning.sql。';
 GO
 
 IF DATABASE_PRINCIPAL_ID(N'erss_app') IS NOT NULL

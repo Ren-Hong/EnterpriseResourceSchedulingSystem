@@ -3,31 +3,40 @@
     Layout = "~/Views/Shared/_Layout.cshtml";
     var isHome = ViewContext.RouteData.Values["controller"] is "Home"
         && ViewContext.RouteData.Values["action"] is "Index";
+    var isSchedule = ViewContext.RouteData.Values["controller"] is "Schedule"
+        && ViewContext.RouteData.Values["action"] is "Index";
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/frontend/layout.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
     @await RenderSectionAsync("Styles", required: false)
 }
 
 <div class="frontend-layout">
     <header class="frontend-header shadow-sm px-4 py-3">
         <span class="frontend-system-name fw-bold">企業資源排程系統</span>
-        @if (User.IsInRole(Account.AdministratorLevel))
-        {
-            <a asp-area="Backend" asp-controller="Home" asp-action="Index" class="btn btn-success btn-sm">後台管理</a>
-        }
+        <div class="frontend-header-actions">
+            <span class="frontend-user-name">@User.Identity?.Name</span>
+            @if (User.IsInRole(Account.AdministratorLevel))
+            {
+                <a asp-area="Backend" asp-controller="Home" asp-action="Index" class="btn btn-success btn-sm">後台管理</a>
+            }
+        </div>
     </header>
 
     <nav class="frontend-navbar" aria-label="前台功能選單">
         <a asp-area="Frontend" asp-controller="Home" asp-action="Index"
            class="frontend-navbar-item @(isHome ? "active" : null)"
-           aria-current="@(isHome ? "page" : null)">前台首頁</a>
+           aria-current="@(isHome ? "page" : null)"><i class="bi bi-house-door" aria-hidden="true"></i>首頁</a>
+        <a asp-area="Frontend" asp-controller="Schedule" asp-action="Index"
+           class="frontend-navbar-item @(isSchedule ? "active" : null)"
+           aria-current="@(isSchedule ? "page" : null)"><i class="bi bi-calendar3" aria-hidden="true"></i>排程主頁</a>
     </nav>
 
-    <main class="frontend-content p-4">
+    <div class="frontend-body">
         @RenderBody()
-    </main>
+    </div>
 </div>
 
 @section Scripts {

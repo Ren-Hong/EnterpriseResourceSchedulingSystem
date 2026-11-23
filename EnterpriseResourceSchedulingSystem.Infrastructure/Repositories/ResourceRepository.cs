@@ -8,13 +8,26 @@ namespace EnterpriseResourceSchedulingSystem.Infrastructure.Repositories;
 
 public sealed class ResourceRepository(IUnitOfWork unitOfWork) : IResourceRepository
 {
+    public async Task<IReadOnlyList<ScheduleResourceOption>> GetAllForSchedulingAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT r.UIDRESID AS ResourceId, c.NVCHRESNAME AS ResourceName, c.INTMAXUSER AS MaxUsers
+            FROM dbo.ERSSRESTBL AS r
+            INNER JOIN dbo.ERSSRESCFGTBL AS c ON c.UIDRESID = r.UIDRESID
+            WHERE c.DTMEFFECTSTART <= CONVERT(date, DATEADD(HOUR, 8, SYSUTCDATETIME())) AND (c.DTMEFFECTEND IS NULL OR c.DTMEFFECTEND >= CONVERT(date, DATEADD(HOUR, 8, SYSUTCDATETIME())))
+            ORDER BY c.NVCHRESNAME, r.UIDRESID;
+            """;
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
+        return (await connection.QueryAsync<ScheduleResourceOption>(command)).AsList();
+    }
+
     public async Task<int> CountAsync(string? keyword, CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT COUNT(*)
-            FROM dbo.ERSSRESCFGTBL AS c
-            WHERE c.DTMEFFECTEND IS NULL
-              AND (@Keyword IS NULL OR c.NVCHRESNAME LIKE N'%' + @Keyword + N'%');
+            FROM dbo.ERSSRESTBL AS r
+            WHERE (@Keyword IS NULL OR r.NVCHRESNAME LIKE N'%' + @Keyword + N'%');
             """;
         var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { Keyword = keyword }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
@@ -24,13 +37,14 @@ public sealed class ResourceRepository(IUnitOfWork unitOfWork) : IResourceReposi
     public async Task<IReadOnlyList<ResourceListItem>> GetPageAsync(string? keyword, int pageNumber, int pageSize, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT c.UIDRESID AS ResourceId, c.NVCHRESNAME AS ResourceName,
+            SELECT r.UIDRESID AS ResourceId, c.NVCHRESNAME AS ResourceName,
                    c.NVCHRESDESC AS Description, c.INTMAXUSER AS MaxUsers,
                    c.VCHCREATEBY AS CreatedBy, c.DTMCREATEDAT AS CreatedAt
-            FROM dbo.ERSSRESCFGTBL AS c
-            WHERE c.DTMEFFECTEND IS NULL
-              AND (@Keyword IS NULL OR c.NVCHRESNAME LIKE N'%' + @Keyword + N'%')
-            ORDER BY c.NVCHRESNAME, c.UIDRESID
+            FROM dbo.ERSSRESTBL AS r
+            INNER JOIN dbo.ERSSRESCFGTBL AS c ON c.UIDRESID = r.UIDRESID
+            WHERE c.DTMEFFECTSTART <= CONVERT(date, DATEADD(HOUR, 8, SYSUTCDATETIME())) AND (c.DTMEFFECTEND IS NULL OR c.DTMEFFECTEND >= CONVERT(date, DATEADD(HOUR, 8, SYSUTCDATETIME())))
+              AND (@Keyword IS NULL OR r.NVCHRESNAME LIKE N'%' + @Keyword + N'%')
+            ORDER BY c.NVCHRESNAME, r.UIDRESID
             OFFSET @Offset ROWS FETCH NEXT @PageSize ROWS ONLY;
             """;
         var parameters = new { Keyword = keyword, Offset = (long)(pageNumber - 1) * pageSize, PageSize = pageSize };
@@ -54,6 +68,20 @@ public sealed class ResourceRepository(IUnitOfWork unitOfWork) : IResourceReposi
         return await connection.QuerySingleOrDefaultAsync<ResourceListItem>(command);
     }
 
+    public async Task<IReadOnlyList<ResourceVersionListItem>> GetVersionsAsync(Guid resourceId, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT UIDRESCFGID AS ResourceConfigId, NUMRESCFGNO AS ResourceConfigNo,
+                   NVCHRESNAME AS ResourceName, NVCHRESDESC AS Description, INTMAXUSER AS MaxUsers,
+                   CONVERT(date, DTMEFFECTSTART) AS EffectiveStart, CONVERT(date, DTMEFFECTEND) AS EffectiveEnd,
+                   VCHCREATEBY AS CreatedBy, DTMCREATEDAT AS CreatedAt
+            FROM dbo.ERSSRESCFGTBL WHERE UIDRESID = @ResourceId
+            ORDER BY NUMRESCFGNO DESC;
+            """;
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, new { ResourceId = resourceId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
+        return (await connection.QueryAsync<ResourceVersionListItem>(command)).AsList();
+    }
     public async Task<ResourceSaveResult> CreateAsync(string name, string? description, int maxUsers, string actor, CancellationToken cancellationToken)
     {
         const string sql = """
@@ -62,9 +90,9 @@ public sealed class ResourceRepository(IUnitOfWork unitOfWork) : IResourceReposi
             VALUES (@ResourceId, @Name, @Description, @MaxUsers, @Actor);
 
             INSERT INTO dbo.ERSSRESCFGTBL
-                (UIDRESID, NUMRESCFGNO, NVCHRESNAME, NVCHRESDESC, INTMAXUSER, DTMEFFECTSTART, VCHCREATEBY)
+                (UIDRESID, NUMRESCFGNO, NVCHRESNAME, NVCHRESDESC, INTMAXUSER, DTMEFFECTSTART, DTMEFFECTEND, VCHCREATEBY)
             VALUES
-                (@ResourceId, 1, @Name, @Description, @MaxUsers, SYSUTCDATETIME(), @Actor);
+                (@ResourceId, 1, @Name, @Description, @MaxUsers, CONVERT(date, DATEADD(HOUR, 8, SYSUTCDATETIME())), @Actor);
             """;
         var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
         var command = new CommandDefinition(sql, new { Name = name, Description = description, MaxUsers = maxUsers, Actor = actor }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
@@ -79,57 +107,62 @@ public sealed class ResourceRepository(IUnitOfWork unitOfWork) : IResourceReposi
         }
     }
 
-    public async Task<ResourceUpdateResult> UpdateAsync(Guid resourceId, string name, string? description, int maxUsers, string actor, CancellationToken cancellationToken)
+    public async Task<ResourceUpdateResult> UpdateAsync(Guid resourceId, string name, string? description, int maxUsers, DateOnly effectiveStart, DateOnly? effectiveEnd, string actor, CancellationToken cancellationToken)
     {
         const string sql = """
-            DECLARE @Clock DATETIME2(0) = SYSUTCDATETIME();
-            DECLARE @LastStart DATETIME2(0);
-            SELECT @LastStart = MAX(DTMEFFECTSTART)
+            SET NOCOUNT ON;
+            DECLARE @StartDate DATE = @EffectiveStart;
+            DECLARE @ConfigNo INT;
+            DECLARE @OldConfigId UNIQUEIDENTIFIER;
+            DECLARE @NewConfigId UNIQUEIDENTIFIER = NEWSEQUENTIALID();
+            DECLARE @LastStart DATE;
+
+            SELECT @LastStart = MAX(CONVERT(date, DTMEFFECTSTART))
             FROM dbo.ERSSRESCFGTBL WITH (UPDLOCK, HOLDLOCK)
             WHERE UIDRESID = @ResourceId;
-            DECLARE @Now DATETIME2(0) = CASE WHEN @LastStart >= @Clock THEN DATEADD(SECOND, 1, @LastStart) ELSE @Clock END;
-            DECLARE @ConfigNo INT;
+            SELECT TOP (1) @OldConfigId = UIDRESCFGID
+            FROM dbo.ERSSRESCFGTBL WITH (UPDLOCK, HOLDLOCK)
+            WHERE UIDRESID = @ResourceId ORDER BY NUMRESCFGNO DESC;
+
+            IF @LastStart IS NULL BEGIN SELECT CAST(0 AS INT); RETURN; END;
+            IF @EffectiveEnd IS NOT NULL AND @EffectiveEnd < @StartDate BEGIN SELECT CAST(-2 AS INT); RETURN; END;
+            IF @StartDate <= @LastStart BEGIN SELECT CAST(-1 AS INT); RETURN; END;
+
             SELECT @ConfigNo = ISNULL(MAX(NUMRESCFGNO), 0) + 1
             FROM dbo.ERSSRESCFGTBL WITH (UPDLOCK, HOLDLOCK)
             WHERE UIDRESID = @ResourceId;
 
-            IF NOT EXISTS (SELECT 1 FROM dbo.ERSSRESTBL WHERE UIDRESID = @ResourceId)
-            BEGIN
-                SELECT CAST(0 AS INT);
-                RETURN;
-            END;
-
             UPDATE dbo.ERSSRESCFGTBL
-            SET DTMEFFECTEND = @Now,
-                VCHUPDATEBY = @Actor,
-                DTMUPDATEDAT = @Now
-            WHERE UIDRESID = @ResourceId AND DTMEFFECTEND IS NULL;
+            SET DTMEFFECTEND = DATEADD(DAY, -1, @StartDate), VCHUPDATEBY = @Actor, DTMUPDATEDAT = SYSUTCDATETIME()
+            WHERE UIDRESID = @ResourceId AND CONVERT(date, DTMEFFECTSTART) < @StartDate AND (DTMEFFECTEND IS NULL OR CONVERT(date, DTMEFFECTEND) >= @StartDate);
+
+            INSERT INTO dbo.ERSSRESCFGTBL
+                (UIDRESCFGID, UIDRESID, NUMRESCFGNO, NVCHRESNAME, NVCHRESDESC, INTMAXUSER, DTMEFFECTSTART, DTMEFFECTEND, VCHCREATEBY)
+            VALUES (@NewConfigId, @ResourceId, @ConfigNo, @Name, @Description, @MaxUsers, @StartDate, @EffectiveEnd, @Actor);
+
+            INSERT INTO dbo.ERSSRESFEETBL (UIDRESCFGID, UIDIDNTYPE, NUMFEE, VCHCREATEBY)
+            SELECT @NewConfigId, UIDIDNTYPE, NUMFEE, @Actor
+            FROM dbo.ERSSRESFEETBL WHERE UIDRESCFGID = @OldConfigId;
 
             UPDATE dbo.ERSSRESTBL
             SET NVCHRESNAME = @Name, NVCHRESDESC = @Description, INTMAXUSER = @MaxUsers,
-                VCHUPDATEBY = @Actor, DTMUPDATEDAT = @Now
+                VCHUPDATEBY = @Actor, DTMUPDATEDAT = SYSUTCDATETIME()
             WHERE UIDRESID = @ResourceId;
-
-            INSERT INTO dbo.ERSSRESCFGTBL
-                (UIDRESID, NUMRESCFGNO, NVCHRESNAME, NVCHRESDESC, INTMAXUSER, DTMEFFECTSTART, VCHCREATEBY)
-            VALUES
-                (@ResourceId, @ConfigNo, @Name, @Description, @MaxUsers,
-                 @Now, @Actor);
-
             SELECT CAST(1 AS INT);
             """;
+        var parameters = new { ResourceId = resourceId, Name = name, Description = description, MaxUsers = maxUsers, EffectiveStart = effectiveStart, EffectiveEnd = effectiveEnd, Actor = actor };
         var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
-        var command = new CommandDefinition(sql, new { ResourceId = resourceId, Name = name, Description = description, MaxUsers = maxUsers, Actor = actor }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
+        var command = new CommandDefinition(sql, parameters, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         try
         {
-            return await connection.ExecuteScalarAsync<int>(command) == 1 ? ResourceUpdateResult.Updated : ResourceUpdateResult.NotFound;
+            var result = await connection.ExecuteScalarAsync<int>(command);
+            return result switch { 1 => ResourceUpdateResult.Updated, -1 => ResourceUpdateResult.InvalidEffectiveStart, -2 => ResourceUpdateResult.InvalidEffectivePeriod, _ => ResourceUpdateResult.NotFound };
         }
         catch (SqlException exception) when (IsUniqueConstraintViolation(exception))
         {
             return ResourceUpdateResult.DuplicateName;
         }
     }
-
     public async Task<ResourceDeleteResult> DeleteAsync(Guid resourceId, CancellationToken cancellationToken)
     {
         const string sql = "DELETE FROM dbo.ERSSRESTBL WHERE UIDRESID = @ResourceId;";

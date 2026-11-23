@@ -1,0 +1,34 @@
+.frontend-home { width: min(1120px, 100%); margin: 0 auto; padding: clamp(20px, 4vw, 48px); overflow: auto; }
+.frontend-home-welcome { position: relative; display: flex; min-height: 330px; align-items: center; justify-content: space-between; gap: 24px; overflow: hidden; padding: clamp(28px, 5vw, 56px); border: 1px solid #d4e8dc; border-radius: 24px; background: linear-gradient(120deg, #fff 5%, #f2faf5 100%); box-shadow: 0 18px 42px rgb(31 58 49 / 7%); }
+.frontend-home-copy { position: relative; z-index: 1; max-width: 560px; }
+.frontend-home-eyebrow { color: #6e9682; font-size: .72rem; font-weight: 750; letter-spacing: .14em; }
+.frontend-home-copy h1 { margin: 13px 0 10px; color: #164d3a; font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; letter-spacing: .03em; }
+.frontend-home-copy p { max-width: 430px; margin: 0; color: #678075; font-size: 1rem; line-height: 1.8; }
+.frontend-home-action { display: inline-flex; min-height: 46px; align-items: center; gap: 12px; margin-top: 26px; padding: 0 20px; border-radius: 12px; background: #0f766e; color: #fff; font-size: .92rem; font-weight: 700; text-decoration: none; box-shadow: 0 8px 17px rgb(15 118 110 / 18%); transition: transform .16s ease, background .16s ease; }
+.frontend-home-action:hover { transform: translateY(-1px); background: #0b665f; color: #fff; }
+.frontend-home-illustration { position: relative; display: grid; flex: 0 0 300px; height: 245px; place-items: center; color: #4a9c74; }
+.home-calendar-art { display: grid; width: 174px; height: 190px; grid-template-columns: repeat(3, 1fr); align-content: start; gap: 11px; padding: 23px; border: 1px solid #cfe6d8; border-radius: 20px; background: #fff; box-shadow: 0 17px 34px rgb(31 89 61 / 10%); transform: rotate(4deg); }
+.home-calendar-art > i { grid-column: 1 / -1; margin-bottom: 9px; font-size: 2.1rem; }
+.home-calendar-art > span { height: 14px; border-radius: 5px; background: #e5f3ea; }
+.home-calendar-art > span:nth-of-type(2), .home-calendar-art > span:nth-of-type(5) { background: #a8d7b8; }
+.home-resource-art { position: absolute; display: grid; width: 58px; height: 58px; place-items: center; border: 1px solid #d3e9dc; border-radius: 18px; background: #fff; color: #4b9871; font-size: 1.45rem; box-shadow: 0 10px 24px rgb(31 89 61 / 10%); }
+.home-resource-art-one { top: 18px; right: 20px; }
+.home-resource-art-two { bottom: 14px; left: 18px; color: #7788b2; }
+.frontend-home-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 20px; }
+.frontend-shortcut-card { display: flex; min-height: 96px; align-items: center; gap: 14px; padding: 17px; border: 1px solid #dbe9e1; border-radius: 16px; background: #fff; color: #234d3e; text-decoration: none; box-shadow: 0 8px 22px rgb(31 58 49 / 4%); }
+a.frontend-shortcut-card { transition: border-color .16s ease, transform .16s ease, box-shadow .16s ease; }
+a.frontend-shortcut-card:hover { transform: translateY(-2px); border-color: #a8cfb8; box-shadow: 0 12px 26px rgb(31 89 61 / 8%); }
+.frontend-shortcut-icon { display: grid; flex: 0 0 46px; width: 46px; height: 46px; place-items: center; border-radius: 14px; background: #e8f5ed; color: #3c956a; font-size: 1.25rem; }
+.frontend-shortcut-icon-muted { background: #f0f2f7; color: #8793b2; }
+.frontend-shortcut-card strong, .frontend-shortcut-card small { display: block; }
+.frontend-shortcut-card strong { font-size: .92rem; }
+.frontend-shortcut-card small { margin-top: 4px; color: #7b9085; font-size: .74rem; }
+.frontend-shortcut-arrow { margin-left: auto; color: #87a394; }
+.frontend-shortcut-card-muted { color: #596d63; }
+@media (max-width: 700px) {
+    .frontend-home { padding: 14px; }
+    .frontend-home-welcome { min-height: 0; padding: 26px 22px; }
+    .frontend-home-illustration { display: none; }
+    .frontend-home-shortcuts { grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 12px; }
+    .frontend-shortcut-card { min-height: 80px; }
+}

@@ -4,6 +4,8 @@ namespace EnterpriseResourceSchedulingSystem.Application.Abstractions.Repositori
 
 public interface IUserRepository
 {
+    Task<IReadOnlyList<ScheduleUserOption>> GetAllForSchedulingAsync(CancellationToken cancellationToken);
+
     Task<int> CountAsync(string? keyword, Guid? identityTypeId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<UserListItem>> GetPageAsync(

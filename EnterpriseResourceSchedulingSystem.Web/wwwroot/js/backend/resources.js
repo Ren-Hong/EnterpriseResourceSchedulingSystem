@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const resourceEditorModal = new bootstrap.Modal(byId("resourceEditorModal"));
     const resourceDeleteModal = new bootstrap.Modal(byId("resourceDeleteModal"));
     const resourceFeesModal = new bootstrap.Modal(byId("resourceFeesModal"));
+    const resourceVersionsModal = new bootstrap.Modal(byId("resourceVersionsModal"));
     const state = { page: 1, keyword: "", items: new Map() };
     const taipeiDateTimeFormatter = new Intl.DateTimeFormat("zh-TW", {
         calendar: "gregory", timeZone: "Asia/Taipei", year: "numeric", month: "2-digit",
@@ -19,6 +20,8 @@ document.addEventListener("DOMContentLoaded", () => {
     let editingResource = null;
     let deletingResource = null;
     let activeResource = null;
+    let activeFeeConfigId = null;
+    let activeFeeEditable = false;
     let editingFee = null;
     let identityTypes = [];
 
@@ -96,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!data.items.length) {
             const row = document.createElement("tr");
             const cell = appendCell(row, "沒有符合條件的設備／資源資料。", "resources-empty");
-            cell.colSpan = 7;
+            cell.colSpan = 5;
             tableBody.append(row);
             return;
         }
@@ -113,6 +116,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const actions = document.createElement("td");
             const group = document.createElement("div");
             group.className = "resources-row-actions";
+            const versions = document.createElement("button");
+            versions.type = "button";
+            versions.className = "resources-button resources-button-secondary";
+            versions.innerHTML = '<i class="bi bi-clock-history" aria-hidden="true"></i>歷年版本';
+            versions.addEventListener("click", () => openVersions(resource));
             const fees = document.createElement("button");
             fees.type = "button";
             fees.className = "resources-button resources-button-fees";
@@ -121,14 +129,14 @@ document.addEventListener("DOMContentLoaded", () => {
             const edit = document.createElement("button");
             edit.type = "button";
             edit.className = "resources-button resources-button-edit";
-            edit.innerHTML = '<i class="bi bi-pencil-square" aria-hidden="true"></i>編輯';
+            edit.innerHTML = '<i class="bi bi-plus-square" aria-hidden="true"></i>新版本';
             edit.addEventListener("click", () => openResourceEditor(resource));
             const remove = document.createElement("button");
             remove.type = "button";
             remove.className = "resources-button resources-button-delete";
             remove.innerHTML = '<i class="bi bi-trash3" aria-hidden="true"></i>刪除';
             remove.addEventListener("click", () => openResourceDelete(resource));
-            group.append(fees, edit, remove);
+            group.append(versions, fees, edit, remove);
             actions.append(group);
             row.append(actions);
             tableBody.append(row);
@@ -200,11 +208,26 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    function nextVersionStart() {
+        const today = todayTaipeiDate();
+        const parts = today.split("-").map(Number);
+        const tomorrow = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1)).toISOString().slice(0, 10);
+        const latest = activeVersions[0]?.effectiveStart;
+        if (!latest || latest < tomorrow) return tomorrow;
+        const latestParts = latest.split("-").map(Number);
+        return new Date(Date.UTC(latestParts[0], latestParts[1] - 1, latestParts[2] + 1)).toISOString().slice(0, 10);
+    }
+    let activeVersions = [];
     function openResourceEditor(resource = null) {
         if (busy) return;
         editingResource = resource;
-        byId("resourceEditorTitle").textContent = resource ? "編輯設備／資源" : "新增設備／資源";
-        byId("saveResourceButton").textContent = resource ? "儲存變更" : "新增設備／資源";
+        byId("resourceEditorTitle").textContent = resource ? "建立設備／資源新版本" : "新增設備／資源";
+        byId("resourceVersionStartField").hidden = !resource;
+        byId("resourceVersionStart").disabled = !resource;
+        byId("resourceVersionStart").value = resource ? nextVersionStart() : "";
+        byId("resourceVersionEndField").hidden = !resource;
+        byId("resourceVersionEnd").value = "";
+        byId("saveResourceButton").textContent = resource ? "建立新版本" : "新增設備／資源";
         byId("resourceEditorName").value = resource?.resourceName ?? "";
         byId("resourceEditorMaxUsers").value = resource?.maxUsers ?? 1;
         byId("resourceEditorDescription").value = resource?.description ?? "";
@@ -245,8 +268,8 @@ document.addEventListener("DOMContentLoaded", () => {
         body.replaceChildren();
         if (!items.length) {
             const row = document.createElement("tr");
-            const cell = appendCell(row, "此設備／資源尚未設定身分費率。", "resources-empty");
-            cell.colSpan = 7;
+            const cell = appendCell(row, "此設定版本尚未設定身分費率。", "resources-empty");
+            cell.colSpan = 5;
             body.append(row);
             return;
         }
@@ -255,8 +278,6 @@ document.addEventListener("DOMContentLoaded", () => {
             appendCell(row, `第 ${fee.resourceConfigNo} 版`, "resources-date");
             appendCell(row, fee.identityName, "resources-name");
             appendCell(row, `${new Intl.NumberFormat("zh-TW", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(fee.fee)} 元`, "resources-fee-amount");
-            appendCell(row, formatCalendarDate(fee.effectiveStart), "resources-date");
-            appendCell(row, formatCalendarDate(fee.effectiveEnd), "resources-date");
             appendCell(row, fee.createdBy || "—");
             const actions = document.createElement("td");
             const group = document.createElement("div");
@@ -265,11 +286,15 @@ document.addEventListener("DOMContentLoaded", () => {
             edit.type = "button";
             edit.className = "resources-button resources-button-edit";
             edit.innerHTML = '<i class="bi bi-pencil-square" aria-hidden="true"></i>編輯';
+            edit.disabled = !activeFeeEditable;
+            edit.title = edit.disabled ? "歷史版本費率僅供查看" : "編輯費率";
             edit.addEventListener("click", () => openFeeEditor(fee));
             const remove = document.createElement("button");
             remove.type = "button";
             remove.className = "resources-button resources-button-delete";
             remove.innerHTML = '<i class="bi bi-trash3" aria-hidden="true"></i>刪除';
+            remove.disabled = !activeFeeEditable;
+            remove.title = remove.disabled ? "歷史版本費率僅供查看" : "刪除費率";
             remove.addEventListener("click", () => deleteFee(fee));
             group.append(edit, remove);
             actions.append(group);
@@ -279,29 +304,45 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     async function loadFees() {
-        if (!activeResource) return;
+        if (!activeResource || !activeFeeConfigId) return;
         setBusy(true);
         try {
-            const items = await request(`${apiUrl}/${encodeURIComponent(activeResource.resourceId)}/fees`);
+            const items = await request(`${apiUrl}/${encodeURIComponent(activeResource.resourceId)}/fees?resourceConfigId=${encodeURIComponent(activeFeeConfigId)}`);
             renderFees(items);
         } catch (error) {
             setFeedback("resourceFeesFeedback", error.message);
-            byId("resourceFeesTableBody").innerHTML = '<tr><td colspan="7" class="resources-empty">無法載入身分費率。</td></tr>';
+            byId("resourceFeesTableBody").innerHTML = '<tr><td colspan="5" class="resources-empty">無法載入身分費率。</td></tr>';
         } finally {
             setBusy(false);
-            byId("addResourceFeeButton").disabled = identityTypes.length === 0;
+            byId("addResourceFeeButton").disabled = identityTypes.length === 0 || !activeFeeEditable;
         }
     }
 
-    async function openFees(resource) {
+    async function openFees(resource, selectedVersion = null) {
         if (busy) return;
         activeResource = resource;
-        byId("resourceFeesTitle").textContent = "管理身分費率";
-        byId("resourceFeesResourceName").textContent = resource.resourceName;
+        try {
+            activeVersions = await request(`${apiUrl}/${encodeURIComponent(resource.resourceId)}/versions`);
+        } catch (error) {
+            setFeedback("resourcesFeedback", error.message);
+            return;
+        }
+        const today = todayTaipeiDate();
+        const version = selectedVersion || activeVersions.find(item => item.effectiveStart <= today && (!item.effectiveEnd || item.effectiveEnd >= today)) || activeVersions[0];
+        if (!version) {
+            setFeedback("resourcesFeedback", "目前沒有資源設定版本。");
+            return;
+        }
+        activeFeeConfigId = version.resourceConfigId;
+        const latestConfigNo = Math.max(0, ...activeVersions.map(item => item.resourceConfigNo));
+        activeFeeEditable = version.resourceConfigNo === latestConfigNo;
+        byId("resourceFeesTitle").textContent = activeFeeEditable ? "管理身分費率" : "查看歷年身分費率";
+        byId("resourceFeesResourceName").textContent = `${resource.resourceName}｜第 ${version.resourceConfigNo} 版｜${formatCalendarDate(version.effectiveStart)} ～ ${version.effectiveEnd ? formatCalendarDate(version.effectiveEnd) : "持續有效"}`;
+        byId("addResourceFeeButton").hidden = !activeFeeEditable;
         byId("resourceFeesListPanel").hidden = false;
         byId("resourceFeeEditorForm").hidden = true;
         setFeedback("resourceFeesFeedback", "");
-        byId("resourceFeesTableBody").innerHTML = '<tr><td colspan="7" class="resources-empty">載入中…</td></tr>';
+        byId("resourceFeesTableBody").innerHTML = '<tr><td colspan="5" class="resources-empty">載入中…</td></tr>';
         resourceFeesModal.show();
         try {
             await loadIdentityTypes();
@@ -310,7 +351,54 @@ document.addEventListener("DOMContentLoaded", () => {
             setFeedback("resourceFeesFeedback", error.message);
         }
     }
+    async function openVersions(resource) {
+        if (busy) return;
+        activeResource = resource;
+        byId("resourceVersionsResourceName").textContent = resource.resourceName;
+        byId("resourceVersionsTableBody").innerHTML = '<tr><td colspan="6" class="resources-empty">載入中…</td></tr>';
+        setFeedback("resourceVersionsFeedback", "");
+        resourceVersionsModal.show();
+        try {
+            const versions = await request(`${apiUrl}/${encodeURIComponent(resource.resourceId)}/versions`);
+            activeVersions = versions;
+            const body = byId("resourceVersionsTableBody");
+            body.replaceChildren();
+            if (!versions.length) {
+                body.innerHTML = '<tr><td colspan="6" class="resources-empty">尚無歷年版本。</td></tr>';
+                return;
+            }
+            for (const version of versions) {
+                const row = document.createElement("tr");
+                appendCell(row, `第 ${version.resourceConfigNo} 版`);
+                appendCell(row, version.resourceName);
+                appendCell(row, String(version.maxUsers));
+                appendCell(row, `${formatCalendarDate(version.effectiveStart)} ～ ${version.effectiveEnd ? formatCalendarDate(version.effectiveEnd) : "持續有效"}`);
+                appendCell(row, version.createdBy || "—");
+                const actions = document.createElement("td");
+                const feesButton = document.createElement("button");
+                feesButton.type = "button";
+                feesButton.className = "resources-button resources-button-fees";
+                feesButton.textContent = "身分費率";
+                feesButton.addEventListener("click", () => {
+                    byId("resourceVersionsModal").addEventListener("hidden.bs.modal", () => openFees(resource, version), { once: true });
+                    resourceVersionsModal.hide();
+                });
+                actions.append(feesButton);
+                row.append(actions);
+                body.append(row);
+            }
+        } catch (error) {
+            setFeedback("resourceVersionsFeedback", error.message);
+            byId("resourceVersionsTableBody").innerHTML = '<tr><td colspan="6" class="resources-empty">無法載入歷年版本。</td></tr>';
+        }
+    }
 
+    byId("addResourceVersionButton").addEventListener("click", () => {
+        if (!activeResource) return;
+        const resource = activeResource;
+        byId("resourceVersionsModal").addEventListener("hidden.bs.modal", () => openResourceEditor(resource), { once: true });
+        resourceVersionsModal.hide();
+    });
     function showFeeList() {
         byId("resourceFeesListPanel").hidden = false;
         byId("resourceFeeEditorForm").hidden = true;
@@ -318,7 +406,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function openFeeEditor(fee = null) {
-        if (busy || !identityTypes.length) return;
+        if (busy || !identityTypes.length || !activeFeeEditable) return;
         editingFee = fee;
         byId("resourceFeesListPanel").hidden = true;
         byId("resourceFeeEditorForm").hidden = false;
@@ -326,8 +414,6 @@ document.addEventListener("DOMContentLoaded", () => {
         byId("saveResourceFeeButton").textContent = fee ? "儲存變更" : "新增費率";
         byId("resourceFeeIdentity").value = fee?.identityTypeId ?? "";
         byId("resourceFeeAmount").value = fee?.fee ?? "";
-        byId("resourceFeeStart").value = fee ? String(fee.effectiveStart).slice(0, 10) : todayTaipeiDate();
-        byId("resourceFeeEnd").value = fee ? String(fee.effectiveEnd).slice(0, 10) : todayTaipeiDate();
         byId("resourceFeeEditorError").hidden = true;
         window.setTimeout(() => byId("resourceFeeIdentity").focus(), 50);
     }
@@ -336,7 +422,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!activeResource || !window.confirm(`確定刪除「${fee.identityName}」的這筆身分費率嗎？`)) return;
         setBusy(true);
         try {
-            const result = await request(`${apiUrl}/${encodeURIComponent(activeResource.resourceId)}/fees/${encodeURIComponent(fee.resourceFeeId)}`, "DELETE");
+            const result = await request(`${apiUrl}/${encodeURIComponent(activeResource.resourceId)}/versions/${encodeURIComponent(activeFeeConfigId)}/fees/${encodeURIComponent(fee.resourceFeeId)}`, "DELETE");
             setFeedback("resourceFeesFeedback", result.message || "身分費率已刪除。", true);
             await loadFees();
         } catch (error) {
@@ -367,7 +453,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const payload = {
             resourceName: byId("resourceEditorName").value.trim(),
             maxUsers: Number(byId("resourceEditorMaxUsers").value),
-            description: byId("resourceEditorDescription").value.trim() || null
+            description: byId("resourceEditorDescription").value.trim() || null,
+            effectiveStart: editingResource ? byId("resourceVersionStart").value : null,
+            effectiveEnd: editingResource ? (byId("resourceVersionEnd").value || null) : null
         };
         const method = editingResource ? "PUT" : "POST";
         const url = editingResource ? `${apiUrl}/${encodeURIComponent(editingResource.resourceId)}` : apiUrl;
@@ -414,13 +502,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const payload = {
             identityTypeId: byId("resourceFeeIdentity").value,
             fee: Number(byId("resourceFeeAmount").value),
-            effectiveStart: byId("resourceFeeStart").value,
-            effectiveEnd: byId("resourceFeeEnd").value
         };
         const method = editingFee ? "PUT" : "POST";
         const url = editingFee
-            ? `${apiUrl}/${encodeURIComponent(activeResource.resourceId)}/fees/${encodeURIComponent(editingFee.resourceFeeId)}`
-            : `${apiUrl}/${encodeURIComponent(activeResource.resourceId)}/fees`;
+            ? `${apiUrl}/${encodeURIComponent(activeResource.resourceId)}/versions/${encodeURIComponent(activeFeeConfigId)}/fees/${encodeURIComponent(editingFee.resourceFeeId)}`
+            : `${apiUrl}/${encodeURIComponent(activeResource.resourceId)}/versions/${encodeURIComponent(activeFeeConfigId)}/fees`;
         setBusy(true);
         try {
             const result = await request(url, method, payload);

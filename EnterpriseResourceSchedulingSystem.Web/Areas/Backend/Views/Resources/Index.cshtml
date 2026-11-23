@@ -68,6 +68,15 @@
             </div>
             <div class="modal-body">
                 <div id="resourceEditorError" class="resources-alert resources-alert-error" role="alert" hidden></div>
+                <div id="resourceVersionStartField" class="resources-form-field" hidden>
+                    <label for="resourceVersionStart">新版本生效起日 <span>*</span></label>
+                    <input id="resourceVersionStart" type="date" required />
+                </div>
+                <div id="resourceVersionEndField" class="resources-form-field" hidden>
+                    <label for="resourceVersionEnd">新版本生效迄日</label>
+                    <input id="resourceVersionEnd" type="date" />
+                    <small class="text-muted">留白代表持續有效。</small>
+                </div>
                 <div class="resources-form-field">
                     <label for="resourceEditorName">設備／資源名稱 <span>*</span></label>
                     <input id="resourceEditorName" maxlength="100" required placeholder="請輸入名稱" />
@@ -124,13 +133,13 @@
                 <div id="resourceFeesFeedback" class="resources-alert resources-alert-error" role="alert" hidden></div>
                 <section id="resourceFeesListPanel" aria-label="身分費率清單">
                     <div class="resources-fees-toolbar">
-                        <p class="resources-fees-hint mb-0">生效日期包含開始日與結束日；同一身分別的期間不可重疊。</p>
+                        <p class="resources-fees-hint mb-0">費率隸屬於資源設定版本，生效期間依版本設定。</p>
                         <button id="addResourceFeeButton" type="button" class="resources-button resources-button-primary ms-auto"><i class="bi bi-plus-lg" aria-hidden="true"></i>新增身分費率</button>
                     </div>
                     <div class="table-responsive resources-modal-table-scroll" tabindex="0" role="region" aria-label="身分費率清單，可水平捲動">
                         <table class="table resources-table align-middle mb-0">
-                            <thead><tr><th scope="col">設定版本</th><th scope="col">身分別</th><th scope="col">費用</th><th scope="col">生效開始</th><th scope="col">生效結束</th><th scope="col">建立人員</th><th scope="col" class="resources-action-column">操作</th></tr></thead>
-                            <tbody id="resourceFeesTableBody"><tr><td colspan="7" class="resources-empty">載入中…</td></tr></tbody>
+                            <thead><tr><th scope="col">設定版本</th><th scope="col">身分別</th><th scope="col">費用</th><th scope="col">建立人員</th><th scope="col" class="resources-action-column">操作</th></tr></thead>
+                            <tbody id="resourceFeesTableBody"><tr><td colspan="5" class="resources-empty">載入中…</td></tr></tbody>
                         </table>
                     </div>
                 </section>
@@ -146,14 +155,6 @@
                             <label for="resourceFeeAmount">使用費用 <span>*</span></label>
                             <input id="resourceFeeAmount" type="number" min="0" max="9999999999.99" step="0.01" required placeholder="0.00" />
                         </div>
-                        <div class="resources-form-field">
-                            <label for="resourceFeeStart">生效開始日 <span>*</span></label>
-                            <input id="resourceFeeStart" type="date" required />
-                        </div>
-                        <div class="resources-form-field">
-                            <label for="resourceFeeEnd">生效結束日 <span>*</span></label>
-                            <input id="resourceFeeEnd" type="date" required />
-                        </div>
                     </div>
                     <div class="resources-editor-actions">
                         <button id="cancelResourceFeeEditButton" type="button" class="resources-button resources-button-secondary">返回費率清單</button>
@@ -166,6 +167,23 @@
     </div>
 </div>
 
+<div class="modal fade resources-modal" id="resourceVersionsModal" tabindex="-1" aria-labelledby="resourceVersionsTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><h2 id="resourceVersionsTitle" class="modal-title fs-5">歷年版本</h2><p id="resourceVersionsResourceName" class="resources-fees-subtitle mb-0"></p></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="關閉"></button>
+            </div>
+            <div class="modal-body">
+                <div id="resourceVersionsFeedback" class="resources-alert resources-alert-error" role="alert" hidden></div>
+                <div class="resources-fees-toolbar"><p class="resources-fees-hint mb-0">每個版本包含資源資料及該版本的完整身分費率。</p><button id="addResourceVersionButton" type="button" class="resources-button resources-button-primary ms-auto"><i class="bi bi-plus-lg" aria-hidden="true"></i>新增版本</button></div>
+                <div class="table-responsive resources-modal-table-scroll"><table class="table resources-table resources-version-table align-middle mb-0"><thead><tr><th>版本</th><th>資源名稱</th><th>人數上限</th><th>生效期間</th><th>建立人員</th><th class="resources-version-action-column">操作</th></tr></thead><tbody id="resourceVersionsTableBody"><tr><td colspan="6" class="resources-empty">載入中…</td></tr></tbody></table></div>
+            </div>
+            <div class="modal-footer"><button type="button" class="resources-button resources-button-secondary" data-bs-dismiss="modal">關閉</button></div>
+        </div>
+    </div>
+</div>
 @section Scripts {
     <script src="~/js/backend/resources.js" asp-append-version="true"></script>
 }
+

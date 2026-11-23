@@ -7,7 +7,7 @@ public sealed record ResourceFeeListItem(
     Guid IdentityTypeId,
     string IdentityName,
     decimal Fee,
-    DateTime EffectiveStart,
-    DateTime EffectiveEnd,
+    DateTime ConfigEffectiveStart,
+    DateTime? ConfigEffectiveEnd,
     string CreatedBy,
     DateTime CreatedAt);

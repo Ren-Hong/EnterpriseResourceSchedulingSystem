@@ -29,22 +29,20 @@ erDiagram
         int NUMRESCFGNO
         nvarchar NVCHRESNAME
         int INTMAXUSER
-        datetime2 DTMEFFECTSTART
-        datetime2 DTMEFFECTEND
+        date DTMEFFECTSTART
+        date DTMEFFECTEND
     }
     ERSSRESFEETBL {
         uniqueidentifier UIDRESFEEID PK
         uniqueidentifier UIDRESCFGID FK
         uniqueidentifier UIDIDNTYPE FK
         decimal NUMFEE
-        date DTMEFFECTSTART
-        date DTMEFFECTEND
     }
     ERSSUSERRES {
         uniqueidentifier UIDUSERID PK, FK
         uniqueidentifier UIDRESID PK, FK
-        datetime2 DTMEFFECTSTART
-        datetime2 DTMEFFECTEND
+        date DTMEFFECTSTART
+        date DTMEFFECTEND
     }
     ERSSSLOTTBL {
         uniqueidentifier UIDSLOTID PK
@@ -90,7 +88,7 @@ erDiagram
 - `ERSSACCTBL` 是登入帳戶；它刻意不連到 `ERSSUSERTBL`。人員名單不需要帳密。
 - `ERSSUSERTBL.UIDIDNTYPE` 可為 `NULL`；有身分別時參照 `ERSSIDNTBL`。
 - `ERSSRESTBL` 是穩定資源主檔；`ERSSRESCFGTBL` 保存每次設定版本與生效區間。
-- `ERSSRESFEETBL` 將費率綁定資源版本及身分別，生效起訖為必填 `DATE` 且含首尾日；資源 ID 由版本表推得，避免重複欄位不一致。
+- `ERSSRESCFGTBL` 保存設定版本的生效起訖（`DATE`），結束日為 `NULL` 代表持續有效；新增版本會結束前一版本並複製該版本費率。`ERSSRESFEETBL` 每個版本每種身分別一筆，只保存版本、身分別及費用。
 - `ERSSUSERRES` 是人員與資源的多對多使用權限，複合主鍵為 `(UIDUSERID, UIDRESID)`。
 - `ERSSSLOTTBL` 是可排時段，不是實際預約；容量可低於設定版本的資源人數上限。
 - `ERSSSLOTFEETBL` 在時段建立時保存各身分別的費率快照。
@@ -102,4 +100,4 @@ erDiagram
 - 舊 `ERSSSCHUSERTBL`（時段人員明細）更名為 `ERSSSCHTBL`。
 - 既有資源初始化為設定版本 1；既有費率指向版本 1；既有時段亦指向版本 1。
 - 既有預約保留 `NUMFEE`，不會自動填 `UIDSLOTFEEID`，避免把歷史預約錯配到新的費率快照。
-- 舊費率的空白結束日會遷移為明確日期 `9999-12-31`；若舊費率在轉成日期精度後期間重疊，遷移會中止並回滾，需先整理衝突資料。
+- `UpgradeResourceFeeVersioning.sql` 會將舊費率的共同生效期間移到資源版本，並移除費率列日期。若同一版本內各身分期間不一致或同一身分有多筆費率，遷移會停止並保留原資料，需先拆成多個設定版本。

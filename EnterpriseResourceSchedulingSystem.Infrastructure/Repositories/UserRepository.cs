@@ -15,6 +15,22 @@ public sealed class UserRepository(IUnitOfWork unitOfWork) : IUserRepository
           AND (@IdentityTypeId IS NULL OR u.UIDIDNTYPE = @IdentityTypeId)
         """;
 
+    public async Task<IReadOnlyList<ScheduleUserOption>> GetAllForSchedulingAsync(CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT u.UIDUSERID AS UserId,
+                   COALESCE(NULLIF(LTRIM(RTRIM(u.NVCHDISPLAYNAME)), N''), N'未設定姓名') AS DisplayName,
+                   u.UIDIDNTYPE AS IdentityTypeId,
+                   i.NVCHIDENTITYNAME AS IdentityTypeName
+            FROM dbo.ERSSUSERTBL AS u
+            LEFT JOIN dbo.ERSSIDNTBL AS i ON i.UIDIDNTYPE = u.UIDIDNTYPE
+            ORDER BY COALESCE(NULLIF(LTRIM(RTRIM(u.NVCHDISPLAYNAME)), N''), N'未設定姓名'), u.UIDUSERID;
+            """;
+        var connection = await unitOfWork.GetOpenConnectionAsync(cancellationToken);
+        var command = new CommandDefinition(sql, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
+        return (await connection.QueryAsync<ScheduleUserOption>(command)).AsList();
+    }
+
     public async Task<int> CountAsync(string? keyword, Guid? identityTypeId, CancellationToken cancellationToken)
     {
         var sql = "SELECT COUNT(*) " + FromAndFilter;

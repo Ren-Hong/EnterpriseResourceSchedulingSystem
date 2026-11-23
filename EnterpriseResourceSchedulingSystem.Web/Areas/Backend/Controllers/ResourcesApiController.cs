@@ -27,6 +27,12 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
         return item is null ? NotFound() : Ok(item);
     }
 
+    [HttpGet("{resourceId:guid}/versions")]
+    public async Task<ActionResult<IReadOnlyList<ResourceVersionListItem>>> GetVersions(Guid resourceId, CancellationToken cancellationToken)
+    {
+        if (await resources.FindByIdAsync(resourceId, cancellationToken) is null) return NotFound();
+        return Ok(await resources.GetVersionsAsync(resourceId, cancellationToken));
+    }
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create([FromBody] SaveResourceRequest request, CancellationToken cancellationToken)
@@ -53,11 +59,13 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
     {
         try
         {
-            return await resources.UpdateAsync(resourceId, request.ResourceName, request.Description, request.MaxUsers, CurrentActor(), cancellationToken) switch
+            return await resources.UpdateAsync(resourceId, request.ResourceName, request.Description, request.MaxUsers, request.EffectiveStart ?? DateOnly.FromDateTime(DateTime.UtcNow.AddHours(8)), request.EffectiveEnd, CurrentActor(), cancellationToken) switch
             {
                 ResourceUpdateResult.Updated => Ok(new { message = "設備／資源資料已更新。" }),
                 ResourceUpdateResult.NotFound => NotFound(new { message = "找不到這筆設備／資源資料。" }),
                 ResourceUpdateResult.DuplicateName => Conflict(new { message = "此設備／資源名稱已存在。" }),
+                ResourceUpdateResult.InvalidEffectiveStart => Conflict(new { message = "新版本生效日起必須晚於目前版本的生效起日。" }),
+                ResourceUpdateResult.InvalidEffectivePeriod => BadRequest(new { message = "新版本生效迄日不可早於生效起日。" }),
                 _ => StatusCode(StatusCodes.Status500InternalServerError)
             };
         }
@@ -81,19 +89,19 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
     }
 
     [HttpGet("{resourceId:guid}/fees")]
-    public async Task<ActionResult<IReadOnlyList<ResourceFeeListItem>>> GetFees(Guid resourceId, CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyList<ResourceFeeListItem>>> GetFees(Guid resourceId, [FromQuery] Guid? resourceConfigId, CancellationToken cancellationToken)
     {
-        var result = await resourceFees.GetByResourceAsync(resourceId, cancellationToken);
+        var result = await resourceFees.GetByResourceAsync(resourceId, resourceConfigId, cancellationToken);
         return result is null ? NotFound(new { message = "找不到這筆設備／資源資料。" }) : Ok(result);
     }
 
-    [HttpPost("{resourceId:guid}/fees")]
+    [HttpPost("{resourceId:guid}/versions/{resourceConfigId:guid}/fees")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateFee(Guid resourceId, [FromBody] SaveResourceFeeRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> CreateFee(Guid resourceId, Guid resourceConfigId, [FromBody] SaveResourceFeeRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            return FeeSaveResponse(await resourceFees.CreateAsync(resourceId, request, CurrentActor(), cancellationToken));
+            return FeeSaveResponse(await resourceFees.CreateAsync(resourceId, resourceConfigId, request, CurrentActor(), cancellationToken));
         }
         catch (ArgumentException exception)
         {
@@ -101,13 +109,13 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
         }
     }
 
-    [HttpPut("{resourceId:guid}/fees/{resourceFeeId:guid}")]
+    [HttpPut("{resourceId:guid}/versions/{resourceConfigId:guid}/fees/{resourceFeeId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateFee(Guid resourceId, Guid resourceFeeId, [FromBody] SaveResourceFeeRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> UpdateFee(Guid resourceId, Guid resourceConfigId, Guid resourceFeeId, [FromBody] SaveResourceFeeRequest request, CancellationToken cancellationToken)
     {
         try
         {
-            return FeeSaveResponse(await resourceFees.UpdateAsync(resourceId, resourceFeeId, request, CurrentActor(), cancellationToken));
+            return FeeSaveResponse(await resourceFees.UpdateAsync(resourceId, resourceConfigId, resourceFeeId, request, CurrentActor(), cancellationToken));
         }
         catch (ArgumentException exception)
         {
@@ -115,10 +123,10 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
         }
     }
 
-    [HttpDelete("{resourceId:guid}/fees/{resourceFeeId:guid}")]
+    [HttpDelete("{resourceId:guid}/versions/{resourceConfigId:guid}/fees/{resourceFeeId:guid}")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteFee(Guid resourceId, Guid resourceFeeId, CancellationToken cancellationToken)
-        => await resourceFees.DeleteAsync(resourceId, resourceFeeId, cancellationToken) switch
+    public async Task<IActionResult> DeleteFee(Guid resourceId, Guid resourceConfigId, Guid resourceFeeId, CancellationToken cancellationToken)
+        => await resourceFees.DeleteAsync(resourceId, resourceConfigId, resourceFeeId, cancellationToken) switch
         {
             ResourceFeeDeleteResult.Deleted => Ok(new { message = "身分費率已刪除。" }),
             ResourceFeeDeleteResult.NotFound => NotFound(new { message = "找不到這筆身分費率。" }),
@@ -129,8 +137,8 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
         => result switch
         {
             ResourceFeeSaveResult.Saved => Ok(new { message = "身分費率已儲存。" }),
-            ResourceFeeSaveResult.OverlappingPeriod => Conflict(new { message = "同一身分別的費率生效期間不可重疊。" }),
-            ResourceFeeSaveResult.DuplicateStart => Conflict(new { message = "同一身分別已有相同的生效開始時間。" }),
+            ResourceFeeSaveResult.DuplicateIdentity => Conflict(new { message = "此設定版本已存在該身分別費率。" }),
+            ResourceFeeSaveResult.IdentityTypeNotFound => NotFound(new { message = "找不到所選身分別。" }),
             ResourceFeeSaveResult.ReferenceNotFound => NotFound(new { message = "設備／資源或身分別已不存在，請重新載入。" }),
             ResourceFeeSaveResult.FeeNotFound => NotFound(new { message = "找不到這筆身分費率。" }),
             _ => StatusCode(StatusCodes.Status500InternalServerError)
