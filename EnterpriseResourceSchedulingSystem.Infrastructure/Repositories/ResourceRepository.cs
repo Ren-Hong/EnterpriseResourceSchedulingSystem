@@ -18,8 +18,9 @@ public sealed class ResourceRepository(IUnitOfWork unitOfWork) : IResourceReposi
                 SELECT TOP (1) config.INTMAXUSER
                 FROM dbo.ERSSRESCFGTBL AS config
                 WHERE config.UIDRESID = r.UIDRESID
-                  AND CONVERT(date, DATEADD(HOUR, 8, SYSUTCDATETIME())) BETWEEN config.DTMEFFECTSTART AND config.DTMEFFECTEND
-                ORDER BY config.NUMRESCFGNO DESC
+                ORDER BY CASE WHEN CONVERT(date, DATEADD(HOUR, 8, SYSUTCDATETIME()))
+                                   BETWEEN config.DTMEFFECTSTART AND config.DTMEFFECTEND THEN 0 ELSE 1 END,
+                         config.NUMRESCFGNO DESC
             ) AS c
             ORDER BY r.NVCHRESNAME, r.UIDRESID;
             """;

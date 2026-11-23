@@ -88,7 +88,7 @@ erDiagram
 - `ERSSACCTBL` 是登入帳戶；它刻意不連到 `ERSSUSERTBL`。人員名單不需要帳密。
 - `ERSSUSERTBL.UIDIDNTYPE` 可為 `NULL`；有身分別時參照 `ERSSIDNTBL`。
 - `ERSSRESTBL` 是穩定資源主檔；`ERSSRESCFGTBL` 保存每次設定版本與生效區間。
-- `ERSSRESCFGTBL` 保存設定版本的生效起訖（`DATE`），結束日必填；持續有效版本以 `9999-12-31` 表示；新增版本會結束前一版本並複製該版本費率。`ERSSRESFEETBL` 每個版本每種身分別一筆，只保存版本、身分別及費用。
+- `ERSSRESCFGTBL` 保存設定版本的生效起訖（`DATE`），結束日必填；持續有效版本以 `9999-12-31` 表示；新增版本可與舊版期間重疊，費率按版本設定。`ERSSRESFEETBL` 每個版本每種身分別一筆，只保存版本、身分別及費用。
 - `ERSSUSERRES` 是人員與資源的多對多使用權限，複合主鍵為 `(UIDUSERID, UIDRESID)`。
 - `ERSSSLOTTBL` 是可排時段，不是實際預約；容量可低於設定版本的資源人數上限。
 - `ERSSSLOTFEETBL` 在時段建立時保存各身分別的費率快照。

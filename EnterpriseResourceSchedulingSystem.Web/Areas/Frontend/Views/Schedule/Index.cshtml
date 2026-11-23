@@ -1,12 +1,16 @@
+@using Microsoft.AspNetCore.Authorization
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthorizationService
+
 @{
     ViewData["Title"] = "排程主頁";
+    var canManage = (await AuthorizationService.AuthorizeAsync(User, EnterpriseResourceSchedulingSystem.Web.Security.AuthorizationPolicies.BackendAccess)).Succeeded;
 }
 
 @section Styles {
     <link rel="stylesheet" href="~/css/frontend/scheduler.css" asp-append-version="true" />
 }
 
-<main id="frontendScheduler" class="frontend-scheduler" data-filters-url="@Url.Content("~/api/schedule/options")" aria-label="企業資源排程">
+<main id="frontendScheduler" class="frontend-scheduler" data-schedule-url="@Url.Content("~/api/schedule")" aria-label="企業資源排程">
     <aside class="scheduler-sidebar" aria-label="設備與人員條件">
         <div class="scheduler-sidebar-heading">
             <div>
@@ -71,55 +75,160 @@
 
     <section class="scheduler-calendar-column" aria-label="排程日曆">
         <div class="scheduler-calendar-card">
+            <label id="calendarIntervalControl" class="scheduler-interval-control" hidden>
+                <span class="visually-hidden">時間間隔</span>
+                <select id="calendarInterval" class="form-select form-select-sm">
+                    <option value="5">5 分鐘／格</option>
+                    <option value="10">10 分鐘／格</option>
+                    <option value="15">15 分鐘／格</option>
+                    <option value="30" selected>30 分鐘／格</option>
+                </select>
+            </label>
             <div id="scheduleCalendar" aria-label="資源排程日曆"></div>
             <div id="calendarLoadMessage" class="calendar-load-message" role="status" hidden></div>
         </div>
     </section>
 
-    <aside class="scheduler-information" aria-label="相關資訊">
-        <div class="scheduler-information-heading">
-            <span class="scheduler-eyebrow">DETAILS</span>
-            <h2>相關資訊</h2>
-        </div>
-        <div class="scheduler-tabs" role="tablist" aria-label="排程相關資訊">
-            <button class="scheduler-tab is-active" id="resourceInfoTab" type="button" role="tab" aria-selected="true" aria-controls="resourceInfoPanel" data-scheduler-tab="resourceInfoPanel">資源資訊</button>
-            <button class="scheduler-tab" id="scheduleInfoTab" type="button" role="tab" aria-selected="false" aria-controls="scheduleInfoPanel" tabindex="-1" data-scheduler-tab="scheduleInfoPanel">時段資訊</button>
-            <button class="scheduler-tab" id="myBookingsTab" type="button" role="tab" aria-selected="false" aria-controls="myBookingsPanel" tabindex="-1" data-scheduler-tab="myBookingsPanel">我的預約</button>
+    <aside class="scheduler-information" aria-label="排程資料">
+        <div class="scheduler-tabs @(canManage ? "scheduler-tabs-manage" : "")" role="tablist" aria-label="排程操作">
+            @if (canManage)
+            {
+                <button class="scheduler-tab is-active" id="slotCreateTab" type="button" role="tab" aria-selected="true" aria-controls="slotCreatePanel" data-scheduler-tab="slotCreatePanel">建立時間格</button>
+            }
+            <button class="scheduler-tab @(!canManage ? "is-active" : "")" id="scheduleInfoTab" type="button" role="tab" aria-selected="@(!canManage ? "true" : "false")" aria-controls="scheduleInfoPanel" tabindex="@(canManage ? -1 : 0)" data-scheduler-tab="scheduleInfoPanel">排程資料</button>
+            <button class="scheduler-tab" id="personInfoTab" type="button" role="tab" aria-selected="false" aria-controls="personInfoPanel" tabindex="-1" data-scheduler-tab="personInfoPanel">人員資訊</button>
+            <button class="scheduler-tab" id="resourceInfoTab" type="button" role="tab" aria-selected="false" aria-controls="resourceInfoPanel" tabindex="-1" data-scheduler-tab="resourceInfoPanel">設備資訊</button>
         </div>
         <div class="scheduler-tab-content">
-            <section id="resourceInfoPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="resourceInfoTab">
-                <div class="scheduler-detail-empty">
-                    <span class="scheduler-detail-empty-icon"><i class="bi bi-box-seam" aria-hidden="true"></i></span>
-                    <h3>尚未選擇設備資源</h3>
-                    <p>選擇左側設備後，這裡會顯示設備說明、可使用人數與使用費率。</p>
+            @if (canManage)
+            {
+                <section id="slotCreatePanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="slotCreateTab">
+                    <div class="scheduler-panel-row">
+                        <label class="form-label" for="slotDropResource">新增至設備</label>
+                        <select id="slotDropResource" class="form-select" disabled>
+                            <option value="">請選擇設備</option>
+                        </select>
+                    </div>
+                    <form id="slotTemplateForm" class="scheduler-panel-row">
+                        <label class="form-label" for="slotTemplateMinutes">自訂分鐘數</label>
+                        <div class="scheduler-panel-action">
+                            <input id="slotTemplateMinutes" class="form-control" type="number" min="5" max="720" step="5" value="30" required />
+                            <button class="btn btn-success text-nowrap" type="submit">更新自訂格</button>
+                        </div>
+                    </form>
+                    <div id="slotTemplates" class="scheduler-slot-templates" aria-label="可拖曳的空白時段">
+                        <div id="customSlotTemplate" class="scheduler-slot-template" data-minutes="30">＋ 自訂 30 分鐘空白時間</div>
+                        @foreach (var minutes in new[] { 30, 60, 90, 120 })
+                        {
+                            <div class="scheduler-slot-template" data-minutes="@minutes">＋ @minutes 分鐘空白時間</div>
+                        }
+                    </div>
+                    <ul class="scheduler-calendar-legend" aria-label="時段狀態圖例">
+                        <li class="scheduler-slot-open">空白時間</li>
+                        <li class="scheduler-slot-booked">已預約</li>
+                        <li class="scheduler-slot-completed">已完成</li>
+                        <li class="scheduler-slot-cancelled">已取消</li>
+                    </ul>
+                    <p id="slotDropFeedback" class="scheduler-panel-feedback" role="status"></p>
+                </section>
+            }
+            <section id="scheduleInfoPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="scheduleInfoTab" hidden="@canManage">
+                <p id="scheduleSlotDetail" class="scheduler-panel-empty">請點選日曆上的時間格。</p>
+                <div id="scheduleSlotFields" hidden>
+                    <div class="scheduler-panel-row"><label for="detailSlotId">排程單號</label><input id="detailSlotId" class="form-control" readonly /></div>
+                    <div class="scheduler-panel-row"><label for="detailResource">設備</label><input id="detailResource" class="form-control" readonly /></div>
+                    <div class="scheduler-panel-row"><label for="detailStatus">狀態</label><input id="detailStatus" class="form-control" readonly /></div>
+                    <div class="scheduler-panel-row"><label for="detailDate">排程日期</label><input id="detailDate" class="form-control" type="date" readonly /></div>
+                    <div class="scheduler-panel-row"><label for="detailVersion">設備設定</label><input id="detailVersion" class="form-control" readonly /></div>
+                    <div class="scheduler-panel-row"><label for="detailStart">開始時間</label><input id="detailStart" class="form-control" type="time" readonly /></div>
+                    <div class="scheduler-panel-row"><label for="detailEnd">結束時間</label><input id="detailEnd" class="form-control" type="time" readonly /></div>
+                    <div class="scheduler-panel-row scheduler-panel-note">
+                        <label for="detailBookedNames">已預約人員</label>
+                        <textarea id="detailBookedNames" class="form-control" rows="2" readonly aria-live="polite"></textarea>
+                    </div>
+                    <div class="scheduler-panel-row"><label for="detailCapacity">預約名額</label><input id="detailCapacity" class="form-control" readonly /></div>
+                    @if (canManage)
+                    {
+                        <form id="increaseSlotCapacityForm" class="scheduler-panel-row" hidden>
+                            <label for="increaseSlotCapacity">增加名額</label>
+                            <div class="scheduler-panel-action">
+                                <input id="increaseSlotCapacity" class="form-control" type="number" required />
+                                <button class="btn btn-outline-success text-nowrap" type="submit">更新名額</button>
+                            </div>
+                        </form>
+                        <div id="bookScheduleSlot" class="scheduler-panel-row" hidden>
+                            <label for="scheduleBookingUser">預約人員</label>
+                            <select id="scheduleBookingUser" class="form-select"></select>
+                        </div>
+                    }
+                    <div class="scheduler-panel-row scheduler-panel-note"><label for="detailNote">備註</label><textarea id="detailNote" class="form-control" rows="2" readonly></textarea></div>
+                    @if (canManage)
+                    {
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button id="saveScheduleBooking" class="btn btn-success flex-fill" type="button" hidden>儲存預約</button>
+                            <button id="cancelScheduleSlot" class="btn btn-danger flex-fill" type="button" hidden>取消時段</button>
+                        </div>
+                    }
                 </div>
-                <div class="scheduler-info-list">
-                    <div><span>選取日期</span><strong id="selectedCalendarDate">尚未選擇</strong></div>
-                    <div><span>目前資源</span><strong>尚未選擇</strong></div>
-                    <div><span>使用權限</span><strong class="scheduler-status-muted">待確認</strong></div>
-                </div>
+                <p id="scheduleSlotFeedback" class="scheduler-panel-feedback" role="status"></p>
             </section>
-            <section id="scheduleInfoPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="scheduleInfoTab" hidden>
-                <div class="scheduler-detail-empty">
-                    <span class="scheduler-detail-empty-icon"><i class="bi bi-calendar2-week" aria-hidden="true"></i></span>
-                    <h3>選取一個排程時段</h3>
-                    <p>選取日曆中的時段後，查看可用名額、適用費率與預約狀態。</p>
-                </div>
+            <section id="personInfoPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="personInfoTab" hidden>
+                <p id="schedulePersonEmpty" class="scheduler-panel-empty">請先點選日曆上的時間格。</p>
+                <ul id="schedulePersonFields" class="scheduler-booking-list" hidden></ul>
+                <p id="schedulePersonFeedback" class="scheduler-panel-feedback" role="status"></p>
             </section>
-            <section id="myBookingsPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="myBookingsTab" hidden>
-                <div class="scheduler-detail-empty">
-                    <span class="scheduler-detail-empty-icon"><i class="bi bi-journal-check" aria-hidden="true"></i></span>
-                    <h3>我的預約</h3>
-                    <p>登入人員的預約清單將顯示在這裡。</p>
-                </div>
+            <section id="resourceInfoPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="resourceInfoTab" hidden>
+                <p id="scheduleResourceEmpty" class="scheduler-panel-empty">請先點選排程，或選擇新增時段所屬設備。</p>
+                <div id="scheduleResourceFields" hidden></div>
             </section>
-        </div>
-        <div class="scheduler-information-footer">
-            <i class="bi bi-shield-check" aria-hidden="true"></i>
-            <span>預約時會確認資源使用權限與剩餘名額。</span>
         </div>
     </aside>
 </main>
+
+@if (canManage)
+{
+    <div class="modal fade" id="scheduleSlotModal" tabindex="-1" aria-labelledby="scheduleSlotTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <form id="scheduleSlotForm" class="modal-content">
+                @Html.AntiForgeryToken()
+                <div class="modal-header">
+                    <h2 id="scheduleSlotTitle" class="modal-title fs-5">新增時段</h2>
+                    <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="關閉"></button>
+                </div>
+                <div class="modal-body">
+                    <label class="form-label d-block">設備
+                        <select id="slotResource" class="form-select" required></select>
+                    </label>
+                    <label class="form-label d-block">日期
+                        <input id="slotDate" class="form-control" type="date" required />
+                    </label>
+                    <label class="form-label d-block">適用版本
+                        <select id="slotVersion" class="form-select" required></select>
+                    </label>
+                    <div class="d-flex gap-2">
+                        <label class="form-label">開始時間
+                            <input id="slotStart" class="form-control" type="time" required />
+                        </label>
+                        <label class="form-label">結束時間
+                            <input id="slotEnd" class="form-control" type="time" required />
+                        </label>
+                    </div>
+                    <label class="form-label d-block">名額
+                        <input id="slotCapacity" class="form-control" type="number" min="1" required />
+                    </label>
+                    <label class="form-label d-block">備註
+                        <textarea id="slotNote" class="form-control" maxlength="500" rows="2"></textarea>
+                    </label>
+                    <p id="slotFeedback" class="text-danger" role="status"></p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">關閉</button>
+                    <button id="saveScheduleSlot" class="btn btn-success" type="submit">儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+}
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
