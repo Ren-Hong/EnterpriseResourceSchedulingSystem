@@ -23,14 +23,16 @@ public sealed class AccountCookieEvents(IAccountRepository? accounts = null) : C
             return;
         }
 
-        var currentLevel = await accounts.FindLevelAsync(accountId, context.HttpContext.RequestAborted);
-        if (currentLevel is null)
+        var account = await accounts.FindPresentationAsync(accountId, context.HttpContext.RequestAborted);
+        if (account is null)
         {
             await RejectAsync(context);
             return;
         }
 
-        if (!context.Principal.IsInRole(currentLevel))
+        var displayName = account.DisplayName ?? "未設定姓名";
+        if (!context.Principal.IsInRole(account.Level) ||
+            identity.FindFirst(ClaimTypes.GivenName)?.Value != displayName)
         {
             var updatedIdentity = new ClaimsIdentity(identity);
             foreach (var role in updatedIdentity.FindAll(updatedIdentity.RoleClaimType).ToArray())
@@ -38,7 +40,13 @@ public sealed class AccountCookieEvents(IAccountRepository? accounts = null) : C
                 updatedIdentity.RemoveClaim(role);
             }
 
-            updatedIdentity.AddClaim(new Claim(updatedIdentity.RoleClaimType, currentLevel));
+            updatedIdentity.AddClaim(new Claim(updatedIdentity.RoleClaimType, account.Level));
+            foreach (var claim in updatedIdentity.FindAll(ClaimTypes.GivenName).ToArray())
+            {
+                updatedIdentity.RemoveClaim(claim);
+            }
+
+            updatedIdentity.AddClaim(new Claim(ClaimTypes.GivenName, displayName));
             context.ReplacePrincipal(new ClaimsPrincipal(updatedIdentity));
             context.ShouldRenew = true;
         }

@@ -12,9 +12,6 @@
 .scheduler-sidebar { display: flex; flex-direction: column; overflow: hidden; }
 .scheduler-sidebar-heading { display: flex; align-items: center; justify-content: space-between; padding: 19px 17px 15px; border-bottom: 1px solid #e8f0eb; }
 .scheduler-sidebar-heading h1, .scheduler-calendar-heading h2 { margin: 2px 0 0; color: var(--scheduler-ink); font-size: 1.15rem; font-weight: 750; }
-.scheduler-eyebrow { color: #779186; font-size: .68rem; font-weight: 750; letter-spacing: .12em; }
-.scheduler-icon-button { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--scheduler-border); border-radius: 10px; background: #fff; color: #587366; }
-.scheduler-icon-button:hover { border-color: #94c4ae; background: #f1f8f4; color: var(--scheduler-green); }
 .scheduler-filter-scroll { display: flex; flex: 1; flex-direction: column; gap: 12px; min-height: 0; padding: 13px; overflow: auto; }
 .scheduler-filter-card { padding: 14px; border: 1px solid #e0ece5; border-radius: 13px; background: #fff; }
 .scheduler-filter-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
@@ -187,4 +184,79 @@
     #scheduleCalendar.fc .fc-toolbar-chunk { display: flex; flex-wrap: wrap; gap: 3px; }
     #scheduleCalendar.fc .fc-button { padding: .3em .48em; font-size: .75rem; }
     .scheduler-information { grid-column: auto; min-height: 390px; }
+}
+
+#saveScheduleBooking {
+    --bs-btn-color: #245d47;
+    --bs-btn-bg: #def0e5;
+    --bs-btn-border-color: #b4d6c2;
+    --bs-btn-hover-color: #245d47;
+    --bs-btn-hover-bg: #d2e9dc;
+    --bs-btn-hover-border-color: #a9ccb8;
+    --bs-btn-active-color: #245d47;
+    --bs-btn-active-bg: #c7e3d3;
+    --bs-btn-active-border-color: #a9ccb8;
+    --bs-btn-disabled-color: #245d47;
+    --bs-btn-disabled-bg: #def0e5;
+    --bs-btn-disabled-border-color: #b4d6c2;
+}
+
+#cancelScheduleSlot {
+    --bs-btn-color: #8c3d45;
+    --bs-btn-bg: #f9e5e8;
+    --bs-btn-border-color: #e9c0c7;
+    --bs-btn-hover-color: #8c3d45;
+    --bs-btn-hover-bg: #f5dbe0;
+    --bs-btn-hover-border-color: #dfb3ba;
+    --bs-btn-active-color: #8c3d45;
+    --bs-btn-active-bg: #f0cfd6;
+    --bs-btn-active-border-color: #dfb3ba;
+    --bs-btn-disabled-color: #8c3d45;
+    --bs-btn-disabled-bg: #f9e5e8;
+    --bs-btn-disabled-border-color: #e9c0c7;
+}
+
+#scheduleResourceFees {
+    padding: 12px;
+    border: 1px solid #d0e6d8;
+    border-radius: 12px;
+    background: #f4faf6;
+}
+
+#scheduleResourceFeesHeading {
+    margin-bottom: 10px;
+    color: #245d47;
+    font-weight: 700;
+}
+
+#scheduleResourceFeesStatus {
+    margin-bottom: 0;
+}
+
+#scheduleResourceFeesTable {
+    --bs-table-bg: transparent;
+    --bs-table-color: #29483b;
+    --bs-table-border-color: #dcebe1;
+    font-size: .875rem;
+}
+
+#scheduleResourceFeesTable th,
+#scheduleResourceFeesTable td {
+    padding: 8px 10px;
+}
+
+#scheduleResourceFeesTable th {
+    background: #e5f2e9;
+    color: #245d47;
+    font-weight: 650;
+}
+
+#scheduleResourceFeesTable th:first-child { border-top-left-radius: 7px; }
+#scheduleResourceFeesTable th:last-child { border-top-right-radius: 7px; }
+#scheduleResourceFeesTable tbody tr:last-child td { border-bottom: 0; }
+
+#scheduleResourceFeesTable td:last-child {
+    color: #245d47;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
 }

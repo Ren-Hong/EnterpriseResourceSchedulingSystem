@@ -7,12 +7,15 @@ namespace EnterpriseResourceSchedulingSystem.Infrastructure.Repositories;
 
 public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleRepository
 {
-    public async Task<IReadOnlyList<ScheduleSlot>> GetSlotsAsync(DateTime fromUtc, DateTime toUtc, Guid[] resources, Guid[] users, bool includeCancelled, CancellationToken ct)
+    public async Task<IReadOnlyList<ScheduleSlot>> GetSlotsAsync(DateTime fromUtc, DateTime toUtc, Guid[] resources, Guid[] users, bool includeCancelled, bool includeUnbooked, CancellationToken ct)
     {
+        if (resources.Length == 0 || users.Length == 0) return Array.Empty<ScheduleSlot>();
+
         const string sql = """
             SELECT s.UIDSLOTID AS SlotId, s.UIDRESID AS ResourceId, r.NVCHRESNAME AS ResourceName,
                    c.NUMRESCFGNO AS Version, s.DTMSTARTAT AS Start, s.DTMENDAT AS [End],
-                   s.INTCAPACITY AS Capacity, bookings.Booked, s.NVCHSTATUS AS Status, s.NVCHNOTE AS Note
+                   s.INTCAPACITY AS Capacity, bookings.Booked, s.NVCHSTATUS AS Status, s.NVCHNOTE AS Note,
+                   c.DTMEFFECTSTART AS EffectiveStart, c.DTMEFFECTEND AS EffectiveEnd, c.INTMAXUSER AS MaxUsers, c.UIDRESCFGID AS ResourceConfigId
             FROM dbo.ERSSSLOTTBL AS s
             JOIN dbo.ERSSRESTBL AS r ON r.UIDRESID = s.UIDRESID
             LEFT JOIN dbo.ERSSRESCFGTBL AS c ON c.UIDRESCFGID = s.UIDRESCFGID
@@ -23,8 +26,8 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
             ) AS bookings
             WHERE s.DTMSTARTAT < @ToUtc AND s.DTMENDAT > @FromUtc
               AND (@IncludeCancelled = 1 OR s.NVCHSTATUS <> N'CANCELLED')
-              AND (@AllResources = 1 OR s.UIDRESID IN @Resources)
-              AND (@AllUsers = 1 OR EXISTS (
+              AND s.UIDRESID IN @Resources
+              AND ((@IncludeUnbooked = 1 AND bookings.Booked = 0) OR EXISTS (
                   SELECT 1 FROM dbo.ERSSSCHTBL AS b
                   WHERE b.UIDSLOTID = s.UIDSLOTID AND b.UIDUSERID IN @Users
                     AND (b.NVCHSTATUS = N'BOOKED' OR s.NVCHSTATUS = N'CANCELLED')
@@ -34,7 +37,7 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
         return (await unitOfWork.Connection.QueryAsync<ScheduleSlot>(Command(sql, new
         {
             FromUtc = fromUtc, ToUtc = toUtc, Resources = resources, Users = users,
-            AllResources = resources.Length == 0, AllUsers = users.Length == 0, IncludeCancelled = includeCancelled
+            IncludeCancelled = includeCancelled, IncludeUnbooked = includeUnbooked
         }, ct))).AsList();
     }
 
@@ -75,26 +78,36 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
         return (await unitOfWork.Connection.QueryAsync<ScheduleBooking>(Command(sql, new { SlotId = slotId }, ct))).AsList();
     }
 
-    public async Task<IReadOnlyList<ScheduleVersion>> GetVersionsAsync(Guid resourceId, DateOnly date, CancellationToken ct)
+    public async Task<IReadOnlyList<ScheduleBookingChange>> GetBookingChangesAsync(Guid slotId, CancellationToken ct)
     {
         const string sql = """
-            SELECT UIDRESCFGID AS ResourceConfigId, NUMRESCFGNO AS Version, INTMAXUSER AS MaxUsers,
-                   NVCHRESDESC AS Description, DTMEFFECTSTART AS EffectiveStart, DTMEFFECTEND AS EffectiveEnd
-            FROM dbo.ERSSRESCFGTBL
-            WHERE UIDRESID = @ResourceId AND @Date BETWEEN DTMEFFECTSTART AND DTMEFFECTEND
-            ORDER BY NUMRESCFGNO DESC;
+            SELECT COALESCE(NULLIF(LTRIM(RTRIM(u.NVCHDISPLAYNAME)), N''), N'未設定姓名') AS DisplayName,
+                   e.Action, TODATETIMEOFFSET(e.OccurredAt, '+00:00') AS OccurredAt,
+                   CASE WHEN e.Actor IS NULL THEN NULL
+                        WHEN e.Actor = N'SYSTEM' AND a.NVCHUSERNAME IS NULL THEN N'系統'
+                        ELSE COALESCE(NULLIF(TRIM(a.NVCHDISPLAYNAME), N''), N'未設定姓名')
+                   END AS Actor
+            FROM dbo.ERSSSCHTBL AS b
+            JOIN dbo.ERSSUSERTBL AS u ON u.UIDUSERID = b.UIDUSERID
+            CROSS APPLY (VALUES
+                (N'BOOKED', b.DTMBOOKEDAT, b.VCHCREATEBY),
+                (N'CANCELLED', b.DTMCANCELAT, b.VCHCANCELBY)
+            ) AS e (Action, OccurredAt, Actor)
+            LEFT JOIN dbo.ERSSACCTBL AS a ON a.NVCHUSERNAME = e.Actor COLLATE Latin1_General_100_CI_AS_SC
+            WHERE b.UIDSLOTID = @SlotId AND e.OccurredAt IS NOT NULL
+            ORDER BY e.OccurredAt DESC, e.Action, b.UIDSCHID;
             """;
-        return (await unitOfWork.Connection.QueryAsync<ScheduleVersion>(Command(sql, new { ResourceId = resourceId, Date = date }, ct))).AsList();
+        return (await unitOfWork.Connection.QueryAsync<ScheduleBookingChange>(Command(sql, new { SlotId = slotId }, ct))).AsList();
     }
 
-    public Task<bool> LockResourceAsync(Guid resourceId, CancellationToken ct)
+    public Task<bool> LockResourceForSlotCreationAsync(Guid resourceId, CancellationToken ct)
         => unitOfWork.Connection.ExecuteScalarAsync<bool>(Command("""
             SELECT CAST(1 AS bit) FROM dbo.ERSSRESTBL WITH (UPDLOCK, HOLDLOCK) WHERE UIDRESID = @ResourceId;
             """, new { ResourceId = resourceId }, ct));
 
     public Task<bool> HasOverlapAsync(Guid resourceId, DateTime startUtc, DateTime endUtc, CancellationToken ct)
         => unitOfWork.Connection.ExecuteScalarAsync<bool>(Command("""
-            SELECT TOP (1) CAST(1 AS bit)
+            SELECT TOP (1) CAST(1 AS bit) --有查到東西就回傳 1 DAPPER會視作 TRUE
             FROM dbo.ERSSSLOTTBL
             WHERE UIDRESID = @ResourceId AND DTMSTARTAT < @EndUtc AND DTMENDAT > @StartUtc
               AND NVCHSTATUS <> N'CANCELLED';
@@ -108,12 +121,6 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
                 (UIDRESID, UIDRESCFGID, DTMSTARTAT, DTMENDAT, INTCAPACITY, NVCHNOTE, VCHCREATEBY)
             OUTPUT INSERTED.UIDSLOTID INTO @Created
             VALUES (@ResourceId, @ConfigId, @StartUtc, @EndUtc, @Capacity, @Note, @Actor);
-
-            INSERT INTO dbo.ERSSSLOTFEETBL (UIDSLOTID, UIDIDNTYPE, NUMFEE, VCHCREATEBY)
-            SELECT s.SlotId, f.UIDIDNTYPE, f.NUMFEE, @Actor
-            FROM @Created AS s
-            CROSS JOIN dbo.ERSSRESFEETBL AS f
-            WHERE f.UIDRESCFGID = @ConfigId;
 
             SELECT SlotId FROM @Created;
             """;
@@ -133,7 +140,8 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
             JOIN dbo.ERSSRESCFGTBL AS c ON c.UIDRESCFGID = s.UIDRESCFGID
             WHERE s.UIDSLOTID = @SlotId AND s.NVCHSTATUS = N'OPEN'
               AND s.DTMSTARTAT > SYSUTCDATETIME()
-              AND @Capacity > s.INTCAPACITY AND @Capacity <= c.INTMAXUSER;
+              AND @Capacity > s.INTCAPACITY  --新名額要大於目前名額
+              AND @Capacity <= c.INTMAXUSER; --新名額不能超過該版本的上限
             """;
         return await unitOfWork.Connection.ExecuteAsync(Command(sql, new { SlotId = slotId, Capacity = capacity, Actor = actor }, ct)) == 1;
     }
@@ -157,12 +165,12 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
             return false;
 
         const string insert = """
-            INSERT INTO dbo.ERSSSCHTBL (UIDSLOTID, UIDUSERID, UIDIDNTYPE, UIDSLOTFEEID, NUMFEE, VCHCREATEBY)
-            SELECT s.UIDSLOTID, u.UIDUSERID, u.UIDIDNTYPE, fee.UIDSLOTFEEID, fee.NUMFEE, @Actor
+            INSERT INTO dbo.ERSSSCHTBL (UIDSLOTID, UIDUSERID, UIDIDNTYPE, NUMFEE, VCHCREATEBY)
+            SELECT s.UIDSLOTID, u.UIDUSERID, u.UIDIDNTYPE, fee.NUMFEE, @Actor
             FROM dbo.ERSSSLOTTBL AS s
             JOIN dbo.ERSSUSERRES AS access ON access.UIDRESID = s.UIDRESID AND access.UIDUSERID = @UserId
             JOIN dbo.ERSSUSERTBL AS u ON u.UIDUSERID = access.UIDUSERID
-            JOIN dbo.ERSSSLOTFEETBL AS fee ON fee.UIDSLOTID = s.UIDSLOTID AND fee.UIDIDNTYPE = u.UIDIDNTYPE
+            JOIN dbo.ERSSRESFEETBL AS fee ON fee.UIDRESCFGID = s.UIDRESCFGID AND fee.UIDIDNTYPE = u.UIDIDNTYPE
             WHERE s.UIDSLOTID = @SlotId AND s.NVCHSTATUS = N'OPEN'
               AND s.DTMSTARTAT > SYSUTCDATETIME()
               AND access.DTMEFFECTSTART <= s.DTMSTARTAT
@@ -181,17 +189,20 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
             """;
         return await unitOfWork.Connection.ExecuteAsync(Command(insert, parameters, ct)) == 1;
     }
-    public async Task<bool> CancelBookingAsync(Guid slotId, Guid bookingId, CancellationToken ct)
+    public async Task<bool> CancelBookingAsync(Guid slotId, Guid bookingId, string actor, CancellationToken ct)
     {
         const string sql = """
+            DECLARE @CancelledAt DATETIME2(0) = SYSUTCDATETIME();
+
             UPDATE b
-            SET NVCHSTATUS = N'CANCELLED', DTMCANCELAT = SYSUTCDATETIME()
+            SET NVCHSTATUS = N'CANCELLED', DTMCANCELAT = @CancelledAt, VCHCANCELBY = @Actor,
+                VCHUPDATEBY = @Actor, DTMUPDATEDAT = @CancelledAt
             FROM dbo.ERSSSCHTBL AS b
             JOIN dbo.ERSSSLOTTBL AS s ON s.UIDSLOTID = b.UIDSLOTID
             WHERE b.UIDSLOTID = @SlotId AND b.UIDSCHID = @BookingId
               AND b.NVCHSTATUS = N'BOOKED' AND s.NVCHSTATUS IN (N'OPEN', N'CLOSED');
             """;
-        return await unitOfWork.Connection.ExecuteAsync(Command(sql, new { SlotId = slotId, BookingId = bookingId }, ct)) == 1;
+        return await unitOfWork.Connection.ExecuteAsync(Command(sql, new { SlotId = slotId, BookingId = bookingId, Actor = actor }, ct)) == 1;
     }
 
     public async Task<bool> CancelSlotAsync(Guid slotId, string actor, CancellationToken ct)
@@ -207,8 +218,11 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
                 RETURN;
             END;
 
+            DECLARE @CancelledAt DATETIME2(0) = SYSUTCDATETIME();
+
             UPDATE dbo.ERSSSCHTBL
-            SET NVCHSTATUS = N'CANCELLED', DTMCANCELAT = SYSUTCDATETIME()
+            SET NVCHSTATUS = N'CANCELLED', DTMCANCELAT = @CancelledAt, VCHCANCELBY = @Actor,
+                VCHUPDATEBY = @Actor, DTMUPDATEDAT = @CancelledAt
             WHERE UIDSLOTID = @SlotId AND NVCHSTATUS = N'BOOKED';
 
             SELECT CAST(1 AS bit);

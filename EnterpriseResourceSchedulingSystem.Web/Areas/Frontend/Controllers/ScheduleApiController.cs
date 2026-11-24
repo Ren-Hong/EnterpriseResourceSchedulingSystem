@@ -11,7 +11,7 @@ namespace EnterpriseResourceSchedulingSystem.Web.Areas.Frontend.Controllers;
 [ApiController]
 [Route("api/schedule")]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public sealed class ScheduleApiController(IResourceService resources, IUserService users, ScheduleService schedules) : ControllerBase
+public sealed class ScheduleApiController(IResourceService resources, IUserService users, ScheduleService schedules, IResourceFeeService resourceFees) : ControllerBase
 {
     [HttpGet("options")]
     public async Task<ActionResult<ScheduleFilterOptions>> GetOptions(CancellationToken cancellationToken)
@@ -23,14 +23,14 @@ public sealed class ScheduleApiController(IResourceService resources, IUserServi
 
     [HttpGet("slots")]
     public async Task<IActionResult> GetSlots(DateOnly from, DateOnly to, [FromQuery] Guid[] resourceIds,
-        [FromQuery] Guid[] userIds, CancellationToken ct, bool includeCancelled = false)
+        [FromQuery] Guid[] userIds, CancellationToken ct, bool includeCancelled = false, bool includeUnbooked = false)
     {
         if (resourceIds.Length + userIds.Length > 1000)
             return BadRequest(new { message = "篩選條件過多，請縮小範圍。" });
 
         try
         {
-            return Ok(await schedules.GetSlotsAsync(from, to, resourceIds, userIds, includeCancelled, ct));
+            return Ok(await schedules.GetSlotsAsync(from, to, resourceIds, userIds, includeCancelled, includeUnbooked, ct));
         }
         catch (ArgumentException exception)
         {
@@ -47,9 +47,21 @@ public sealed class ScheduleApiController(IResourceService resources, IUserServi
     public async Task<IActionResult> GetBookings(Guid slotId, CancellationToken ct)
         => Ok(await schedules.GetBookingsAsync(slotId, ct));
 
+    [HttpGet("slots/{slotId:guid}/booking-changes")]
+    [Authorize(Policy = AuthorizationPolicies.BackendAccess)]
+    public async Task<IActionResult> GetBookingChanges(Guid slotId, CancellationToken ct)
+        => Ok(await schedules.GetBookingChangesAsync(slotId, ct));
+
     [HttpGet("resources/{resourceId:guid}/versions")]
     public async Task<IActionResult> GetVersions(Guid resourceId, DateOnly date, CancellationToken ct)
         => Ok(await schedules.GetVersionsAsync(resourceId, date, ct));
+
+    [HttpGet("resources/{resourceId:guid}/versions/{resourceConfigId:guid}/fees")]
+    public async Task<IActionResult> GetVersionFees(Guid resourceId, Guid resourceConfigId, CancellationToken ct)
+    {
+        var fees = await resourceFees.GetByResourceAsync(resourceId, resourceConfigId, ct);
+        return fees is null ? NotFound() : Ok(fees.Select(fee => new { fee.IdentityName, fee.Fee }));
+    }
 
     [HttpPost("slots")]
     [Authorize(Policy = AuthorizationPolicies.BackendAccess)]
@@ -94,7 +106,7 @@ public sealed class ScheduleApiController(IResourceService resources, IUserServi
     [Authorize(Policy = AuthorizationPolicies.BackendAccess)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CancelBooking(Guid slotId, Guid bookingId, CancellationToken ct)
-        => await schedules.CancelBookingAsync(slotId, bookingId, ct)
+        => await schedules.CancelBookingAsync(slotId, bookingId, CurrentActor(), ct)
             ? NoContent()
             : Conflict(new { message = "找不到可取消的預約。" });
 

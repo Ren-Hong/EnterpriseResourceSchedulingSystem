@@ -52,18 +52,11 @@ erDiagram
         datetime2 DTMENDAT
         int INTCAPACITY
     }
-    ERSSSLOTFEETBL {
-        uniqueidentifier UIDSLOTFEEID PK
-        uniqueidentifier UIDSLOTID FK
-        uniqueidentifier UIDIDNTYPE FK
-        decimal NUMFEE
-    }
     ERSSSCHTBL {
         uniqueidentifier UIDSCHID PK
         uniqueidentifier UIDSLOTID FK
         uniqueidentifier UIDUSERID FK
         uniqueidentifier UIDIDNTYPE FK
-        uniqueidentifier UIDSLOTFEEID FK
         decimal NUMFEE
     }
 
@@ -75,12 +68,9 @@ erDiagram
     ERSSRESTBL ||--o{ ERSSUSERRES : "可用資源"
     ERSSRESTBL ||--o{ ERSSSLOTTBL : "資源時段"
     ERSSRESCFGTBL ||--o{ ERSSSLOTTBL : "時段採用的資源版本"
-    ERSSSLOTTBL ||--o{ ERSSSLOTFEETBL : "時段費用快照"
-    ERSSIDNTBL ||--o{ ERSSSLOTFEETBL : "適用身分"
     ERSSSLOTTBL ||--o{ ERSSSCHTBL : "一個時段多筆實際預約"
     ERSSUSERTBL ||--o{ ERSSSCHTBL : "人員預約"
     ERSSIDNTBL ||--o{ ERSSSCHTBL : "預約時身分快照"
-    ERSSSLOTFEETBL o|--o{ ERSSSCHTBL : "選用時段費率；預約另保存 NUMFEE"
 ```
 
 ## 關聯摘要
@@ -91,7 +81,7 @@ erDiagram
 - `ERSSRESCFGTBL` 保存設定版本的生效起訖（`DATE`），結束日必填；持續有效版本以 `9999-12-31` 表示；新增版本可與舊版期間重疊，費率按版本設定。`ERSSRESFEETBL` 每個版本每種身分別一筆，只保存版本、身分別及費用。
 - `ERSSUSERRES` 是人員與資源的多對多使用權限，複合主鍵為 `(UIDUSERID, UIDRESID)`。
 - `ERSSSLOTTBL` 是可排時段，不是實際預約；容量可低於設定版本的資源人數上限。
-- `ERSSSLOTFEETBL` 在時段建立時保存各身分別的費率快照。
+- 預約依時段的設定版本與預約人的身分別查詢 `ERSSRESFEETBL`，並將當次金額寫入 `ERSSSCHTBL.NUMFEE`。
 - `ERSSSCHTBL` 是實際預約，一人一筆；每筆保留預約身分及 `NUMFEE` 金額快照。
 
 ## 舊表遷移
@@ -99,6 +89,6 @@ erDiagram
 - 舊 `ERSSSCHTBL`（可排時段）更名為 `ERSSSLOTTBL`。
 - 舊 `ERSSSCHUSERTBL`（時段人員明細）更名為 `ERSSSCHTBL`。
 - 既有資源初始化為設定版本 1；既有費率指向版本 1；既有時段亦指向版本 1。
-- 既有預約保留 `NUMFEE`，不會自動填 `UIDSLOTFEEID`，避免把歷史預約錯配到新的費率快照。
+- 升級會移除舊的時段費率快照及其外鍵，既有預約保留 `NUMFEE`。
 - `UpgradeResourceFeeVersioning.sql` 會將舊費率的共同生效期間移到資源版本，並移除費率列日期。若同一版本內各身分期間不一致或同一身分有多筆費率，遷移會停止並保留原資料，需先拆成多個設定版本。
 

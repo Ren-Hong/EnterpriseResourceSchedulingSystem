@@ -13,13 +13,7 @@
 <main id="frontendScheduler" class="frontend-scheduler" data-schedule-url="@Url.Content("~/api/schedule")" aria-label="企業資源排程">
     <aside class="scheduler-sidebar" aria-label="設備與人員條件">
         <div class="scheduler-sidebar-heading">
-            <div>
-                <span class="scheduler-eyebrow">預約條件</span>
-                <h1>排程篩選</h1>
-            </div>
-            <button id="clearSchedulerFilters" class="scheduler-icon-button" type="button" aria-label="清除條件" title="清除條件">
-                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
-            </button>
+            <h1>排程篩選</h1>
         </div>
 
         <div class="scheduler-filter-scroll">
@@ -139,7 +133,6 @@
                     <div class="scheduler-panel-row"><label for="detailResource">設備</label><input id="detailResource" class="form-control" readonly /></div>
                     <div class="scheduler-panel-row"><label for="detailStatus">狀態</label><input id="detailStatus" class="form-control" readonly /></div>
                     <div class="scheduler-panel-row"><label for="detailDate">排程日期</label><input id="detailDate" class="form-control" type="date" readonly /></div>
-                    <div class="scheduler-panel-row"><label for="detailVersion">設備設定</label><input id="detailVersion" class="form-control" readonly /></div>
                     <div class="scheduler-panel-row"><label for="detailStart">開始時間</label><input id="detailStart" class="form-control" type="time" readonly /></div>
                     <div class="scheduler-panel-row"><label for="detailEnd">結束時間</label><input id="detailEnd" class="form-control" type="time" readonly /></div>
                     <div class="scheduler-panel-row scheduler-panel-note">
@@ -175,11 +168,27 @@
             <section id="personInfoPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="personInfoTab" hidden>
                 <p id="schedulePersonEmpty" class="scheduler-panel-empty">請先點選日曆上的時間格。</p>
                 <ul id="schedulePersonFields" class="scheduler-booking-list" hidden></ul>
+                @if (canManage)
+                {
+                    <section class="mt-3" id="scheduleBookingChanges" aria-labelledby="scheduleBookingChangesHeading" hidden>
+                        <h3 class="h6" id="scheduleBookingChangesHeading">異動紀錄</h3>
+                        <p id="scheduleBookingChangesStatus" class="scheduler-panel-empty" role="status"></p>
+                        <ul id="scheduleBookingChangesList" class="scheduler-booking-list"></ul>
+                    </section>
+                }
                 <p id="schedulePersonFeedback" class="scheduler-panel-feedback" role="status"></p>
             </section>
             <section id="resourceInfoPanel" class="scheduler-tab-panel" role="tabpanel" aria-labelledby="resourceInfoTab" hidden>
                 <p id="scheduleResourceEmpty" class="scheduler-panel-empty">請先點選排程，或選擇新增時段所屬設備。</p>
                 <div id="scheduleResourceFields" hidden></div>
+                <section id="scheduleResourceFees" class="mt-3" aria-labelledby="scheduleResourceFeesHeading" hidden>
+                    <h3 id="scheduleResourceFeesHeading" class="h6">身分費率</h3>
+                    <p id="scheduleResourceFeesStatus" class="scheduler-panel-empty" role="status"></p>
+                    <table id="scheduleResourceFeesTable" class="table table-sm mb-0" hidden>
+                        <thead><tr><th scope="col">身分別</th><th scope="col" class="text-end">費率</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </section>
             </section>
         </div>
     </aside>

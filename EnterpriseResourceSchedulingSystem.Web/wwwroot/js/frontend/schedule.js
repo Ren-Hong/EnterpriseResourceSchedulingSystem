@@ -125,7 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
             groups.resources.rows = Array.isArray(options.resources) ? options.resources : [];
             groups.people.rows = Array.isArray(options.users) ? options.users : [];
             Object.values(groups).forEach(group => {
-                group.selected = group === groups.resources ? new Set(group.rows.map(item => item[group.idKey])) : new Set();
+                group.selected = new Set(group.rows.map(item => item[group.idKey]));
                 renderGroup(group);
                 group.list.setAttribute("aria-busy", "false");
             });
@@ -149,15 +149,6 @@ document.addEventListener("DOMContentLoaded", () => {
             renderGroup(group);
             emitSelection();
         });
-    });
-
-    byId("clearSchedulerFilters")?.addEventListener("click", () => {
-        Object.values(groups).forEach(group => {
-            group.search.value = "";
-            group.selected.clear();
-            renderGroup(group);
-        });
-        emitSelection();
     });
 
     function activateTab(tab, focus = false) {
@@ -417,8 +408,38 @@ document.addEventListener("DOMContentLoaded", () => {
         }));
     }
 
+    async function loadResourceFees(resourceId, resourceConfigId, request) {
+        byId("scheduleResourceFees").hidden = false;
+        const status = byId("scheduleResourceFeesStatus");
+        const table = byId("scheduleResourceFeesTable");
+        const body = table.tBodies[0];
+        table.hidden = true;
+        body.replaceChildren();
+        status.hidden = false;
+        status.textContent = "載入身分費率…";
+        try {
+            const fees = await scheduleRequest(`/resources/${resourceId}/versions/${resourceConfigId}/fees`);
+            if (request !== resourceInfoRequest) return;
+            const money = new Intl.NumberFormat("zh-TW", { maximumFractionDigits: 2 });
+            for (const fee of fees) {
+                const row = body.insertRow();
+                row.insertCell().textContent = fee.identityName;
+                const amount = row.insertCell();
+                amount.className = "text-end";
+                amount.textContent = `${money.format(fee.fee)} 元`;
+            }
+            table.hidden = fees.length === 0;
+            status.hidden = fees.length > 0;
+            status.textContent = "此版本尚未設定身分費率。";
+        } catch (error) {
+            if (request !== resourceInfoRequest) return;
+            status.textContent = error.message;
+        }
+    }
+
     async function refreshResourceInfo() {
         const request = ++resourceInfoRequest;
+        byId("scheduleResourceFees").hidden = true;
         const empty = byId("scheduleResourceEmpty");
         const fields = byId("scheduleResourceFields");
         const slot = selectedSlot;
@@ -430,22 +451,28 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!name) return;
 
         try {
-            const versions = await getVersions(resourceId, slot?.start.slice(0, 10) || selectedDate);
-            if (request !== resourceInfoRequest) return;
-            const version = slot
-                ? versions.find(item => item.version === slot.version)
-                : versions.length === 1 ? versions[0] : null;
-            if (version) {
-                if (slot && capacityForm) {
-                    capacityInput.max = String(version.maxUsers);
-                    if (slot.capacity >= version.maxUsers) capacityForm.hidden = true;
-                }
-                renderResourceFields(empty, fields, [
-                    ["設定生效起日", version.effectiveStart.slice(0, 10), "date"],
-                    ["設定生效迄日", version.effectiveEnd.slice(0, 10), "date"],
-                    ["設備名稱", name],
-                    ["預設使用人數上限", version.maxUsers]
-                ]);
+            let version = slot;
+            if (!version) {
+                const versions = await getVersions(resourceId, selectedDate);
+                if (request !== resourceInfoRequest) return;
+                version = versions.length === 1 ? versions[0] : null;
+            }
+            if (version?.version == null) return;
+
+            if (slot && capacityForm && version.maxUsers != null) {
+                capacityInput.max = String(version.maxUsers);
+                if (slot.capacity >= version.maxUsers) capacityForm.hidden = true;
+            }
+
+            renderResourceFields(empty, fields, [
+                ["設備名稱", name],
+                ["設備設定", `第 ${version.version} 版`],
+                ["設定生效起日", version.effectiveStart?.slice(0, 10) ?? "", "date"],
+                ["設定生效迄日", version.effectiveEnd?.slice(0, 10) ?? "", "date"],
+                ["預設使用人數上限", version.maxUsers ?? ""]
+            ]);
+            if (version.resourceConfigId) {
+                void loadResourceFees(resourceId, version.resourceConfigId, request);
             }
         } catch (error) {
             if (request !== resourceInfoRequest) return;
@@ -476,8 +503,49 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    async function loadBookingChanges(slotId, request) {
+        const history = byId("scheduleBookingChanges");
+        if (!history) return;
+
+        const status = byId("scheduleBookingChangesStatus");
+        const list = byId("scheduleBookingChangesList");
+        history.hidden = false;
+        status.hidden = false;
+        status.textContent = "載入異動紀錄…";
+        list.replaceChildren();
+
+        try {
+            const changes = await scheduleRequest(`/slots/${slotId}/booking-changes`);
+            if (request !== bookingsRequest) return;
+            status.hidden = changes.length > 0;
+            status.textContent = "此時段尚無異動紀錄。";
+            for (const change of changes) {
+                const item = document.createElement("li");
+                item.className = "scheduler-booking-card";
+                const copy = document.createElement("div");
+                copy.className = "scheduler-option-copy";
+                const name = document.createElement("span");
+                name.className = "scheduler-option-name";
+                name.textContent = `${change.displayName} · ${change.action === "CANCELLED" ? "取消預約" : "建立預約"}`;
+                const detail = document.createElement("span");
+                detail.className = "scheduler-option-meta";
+                const time = new Date(change.occurredAt).toLocaleString("zh-TW", {
+                    timeZone: "Asia/Taipei", dateStyle: "medium", timeStyle: "short"
+                });
+                detail.textContent = `${time} · 操作者 ${change.actor || "未記錄"}`;
+                copy.append(name, detail);
+                item.append(copy);
+                list.append(item);
+            }
+        } catch (error) {
+            if (request !== bookingsRequest) return;
+            status.textContent = error.message;
+        }
+    }
+
     async function loadBookings(slot) {
         const request = ++bookingsRequest;
+        void loadBookingChanges(slot.slotId, request);
         const output = byId("detailBookedNames");
         output.value = "載入中…";
         personEmpty.hidden = false;
@@ -532,6 +600,8 @@ document.addEventListener("DOMContentLoaded", () => {
     function clearSlot(message = "請點選日曆上的時間格。") {
         selectedSlot = null;
         bookingsRequest++;
+        const history = byId("scheduleBookingChanges");
+        if (history) history.hidden = true;
         slotDetail.textContent = message;
         slotDetail.hidden = false;
         slotFields.hidden = true;
@@ -567,7 +637,6 @@ document.addEventListener("DOMContentLoaded", () => {
         byId("detailResource").value = slot.resourceName;
         byId("detailStatus").value = slotLabels[slotDisplayStatus(slot)];
         byId("detailDate").value = selectedDate;
-        byId("detailVersion").value = slot.version == null ? "" : `第 ${slot.version} 版`;
         byId("detailStart").value = slot.start.slice(11, 16);
         byId("detailEnd").value = slot.end.slice(11, 16);
         byId("detailNote").value = slot.note || "";
@@ -642,8 +711,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     start: startTime + ":00", end: endTime + ":00"
                 })
             });
-            dropFeedback.textContent = groups.people.selected.size
-                ? "已建立空白時段。清除人員篩選即可在日曆查看。"
+            dropFeedback.textContent = groups.people.selected.size !== groups.people.rows.length
+                ? "已建立空白時段。全選人員即可在日曆查看。"
                 : "已建立空白時段。";
             calendar.refetchEvents();
         } catch (error) {
@@ -716,17 +785,16 @@ document.addEventListener("DOMContentLoaded", () => {
         events(info, success, failure) {
             const resources = groups.resources;
             const people = groups.people;
-            if (!resources.selected.size) {
+            if (!resources.selected.size || !people.selected.size) {
                 calendarMessage.hidden = true;
                 success([]);
                 return;
             }
             const query = new URLSearchParams({ from: info.startStr.slice(0, 10), to: info.endStr.slice(0, 10) });
-            if (resources.selected.size < resources.rows.length) {
-                for (const id of resources.selected) query.append("resourceIds", id);
-            }
+            for (const id of resources.selected) query.append("resourceIds", id);
             for (const id of people.selected) query.append("userIds", id);
             if (!hideCancelled) query.set("includeCancelled", "true");
+            if (people.selected.size === people.rows.length) query.set("includeUnbooked", "true");
             scheduleRequest(`/slots?${query}`).then(slots => {
                 calendarMessage.hidden = true;
                 success(slots.map(slot => ({

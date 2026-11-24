@@ -23,6 +23,20 @@ public sealed class ResourceConfigRepository(IUnitOfWork unitOfWork) : IResource
         return (await unitOfWork.Connection.QueryAsync<ResourceVersionListItem>(command)).AsList();
     }
 
+    public async Task<IReadOnlyList<ScheduleVersion>> GetEffectiveVersionsAsync(Guid resourceId, DateOnly date, CancellationToken cancellationToken)
+    {
+        const string sql = """
+            SELECT UIDRESCFGID AS ResourceConfigId, NUMRESCFGNO AS Version, INTMAXUSER AS MaxUsers,
+                   NVCHRESDESC AS Description, DTMEFFECTSTART AS EffectiveStart, DTMEFFECTEND AS EffectiveEnd
+            FROM dbo.ERSSRESCFGTBL
+            WHERE UIDRESID = @ResourceId AND @Date BETWEEN DTMEFFECTSTART AND DTMEFFECTEND
+            ORDER BY NUMRESCFGNO DESC;
+            """;
+        var parameters = new { ResourceId = resourceId, Date = date };
+        var command = new CommandDefinition(sql, parameters, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
+        return (await unitOfWork.Connection.QueryAsync<ScheduleVersion>(command)).AsList();
+    }
+
     public async Task CreateInitialVersionAsync(Guid resourceId, string name, string? description, int maxUsers, string actor, CancellationToken cancellationToken)
     {
         const string sql = """

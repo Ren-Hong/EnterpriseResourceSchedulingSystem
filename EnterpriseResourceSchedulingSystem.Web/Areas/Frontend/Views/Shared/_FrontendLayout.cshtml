@@ -17,7 +17,7 @@
     <header class="frontend-header shadow-sm px-4 py-3">
         <span class="frontend-system-name fw-bold">企業資源排程系統</span>
         <div class="frontend-header-actions">
-            <span class="frontend-user-name">@User.Identity?.Name</span>
+            <span class="frontend-user-name">登入者：@(User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? "未設定姓名")</span>
             @if (User.IsInRole(Account.AdministratorLevel))
             {
                 <a asp-area="Backend" asp-controller="Home" asp-action="Index" class="btn btn-success btn-sm">後台管理</a>

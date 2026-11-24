@@ -4,16 +4,16 @@ using EnterpriseResourceSchedulingSystem.Application.Dtos;
 
 namespace EnterpriseResourceSchedulingSystem.Application.Services;
 
-public sealed class ScheduleService(IScheduleRepository schedules, IUnitOfWork unitOfWork)
+public sealed class ScheduleService(IScheduleRepository schedules, IResourceConfigRepository resourceConfigs, IUnitOfWork unitOfWork)
 {
     private static readonly TimeSpan TaipeiOffset = TimeSpan.FromHours(8);
 
-    public async Task<IReadOnlyList<ScheduleSlot>> GetSlotsAsync(DateOnly from, DateOnly to, Guid[] resources, Guid[] users, bool includeCancelled, CancellationToken ct)
+    public async Task<IReadOnlyList<ScheduleSlot>> GetSlotsAsync(DateOnly from, DateOnly to, Guid[] resources, Guid[] users, bool includeCancelled, bool includeUnbooked, CancellationToken ct)
     {
         if (from.Year < 1900 || to <= from || to.DayNumber - from.DayNumber > 62)
             throw new ArgumentException("排程查詢範圍須介於 1 至 62 天。");
 
-        var slots = await schedules.GetSlotsAsync(ToUtc(from, TimeOnly.MinValue), ToUtc(to, TimeOnly.MinValue), resources, users, includeCancelled, ct);
+        var slots = await schedules.GetSlotsAsync(ToUtc(from, TimeOnly.MinValue), ToUtc(to, TimeOnly.MinValue), resources, users, includeCancelled, includeUnbooked, ct);
         return slots.Select(slot => slot with { Start = ToTaipei(slot.Start), End = ToTaipei(slot.End) }).ToArray();
     }
 
@@ -23,8 +23,11 @@ public sealed class ScheduleService(IScheduleRepository schedules, IUnitOfWork u
     public Task<IReadOnlyList<ScheduleBooking>> GetBookingsAsync(Guid slotId, CancellationToken ct)
         => schedules.GetBookingsAsync(slotId, ct);
 
+    public Task<IReadOnlyList<ScheduleBookingChange>> GetBookingChangesAsync(Guid slotId, CancellationToken ct)
+        => schedules.GetBookingChangesAsync(slotId, ct);
+
     public Task<IReadOnlyList<ScheduleVersion>> GetVersionsAsync(Guid resourceId, DateOnly date, CancellationToken ct)
-        => schedules.GetVersionsAsync(resourceId, date, ct);
+        => resourceConfigs.GetEffectiveVersionsAsync(resourceId, date, ct);
 
     public Task<Guid> CreateSlotAsync(CreateScheduleSlot request, string actor, CancellationToken ct)
     {
@@ -39,10 +42,10 @@ public sealed class ScheduleService(IScheduleRepository schedules, IUnitOfWork u
         var end = ToUtc(request.Date, request.End);
         return unitOfWork.ExecuteInTransactionAsync(async token =>
         {
-            if (!await schedules.LockResourceAsync(request.ResourceId, token))
+            if (!await schedules.LockResourceForSlotCreationAsync(request.ResourceId, token))
                 throw new KeyNotFoundException("找不到設備資源。");
 
-            var versions = await schedules.GetVersionsAsync(request.ResourceId, request.Date, token);
+            var versions = await GetVersionsAsync(request.ResourceId, request.Date, token);
             var version = request.ResourceConfigId is { } id
                 ? versions.SingleOrDefault(item => item.ResourceConfigId == id)
                 : versions.Count == 1 ? versions[0] : null;
@@ -63,8 +66,8 @@ public sealed class ScheduleService(IScheduleRepository schedules, IUnitOfWork u
 
     public Task<bool> BookAsync(Guid slotId, Guid userId, string actor, CancellationToken ct)
         => unitOfWork.ExecuteInTransactionAsync(token => schedules.BookAsync(slotId, userId, actor, token), ct);
-    public Task<bool> CancelBookingAsync(Guid slotId, Guid bookingId, CancellationToken ct)
-        => schedules.CancelBookingAsync(slotId, bookingId, ct);
+    public Task<bool> CancelBookingAsync(Guid slotId, Guid bookingId, string actor, CancellationToken ct)
+        => schedules.CancelBookingAsync(slotId, bookingId, actor, ct);
 
     public Task<bool> CancelSlotAsync(Guid slotId, string actor, CancellationToken ct)
         => unitOfWork.ExecuteInTransactionAsync(token => schedules.CancelSlotAsync(slotId, actor, token), ct);

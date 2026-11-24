@@ -20,15 +20,15 @@ public sealed class AccountRepository(IUnitOfWork unitOfWork) : IAccountReposito
         return await unitOfWork.Connection.QuerySingleOrDefaultAsync<Account>(command);
     }
 
-    public async Task<string?> FindLevelAsync(Guid accountId, CancellationToken cancellationToken)
+    public async Task<AccountPresentation?> FindPresentationAsync(Guid accountId, CancellationToken cancellationToken)
     {
         const string sql = """
-            SELECT NVCHLEVEL
+            SELECT NVCHLEVEL AS [Level], NULLIF(TRIM(NVCHDISPLAYNAME), N'') AS DisplayName
             FROM dbo.ERSSACCTBL
             WHERE UIDACCTID = @AccountId;
             """;
         var command = new CommandDefinition(sql, new { AccountId = accountId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
-        return await unitOfWork.Connection.QuerySingleOrDefaultAsync<string>(command);
+        return await unitOfWork.Connection.QuerySingleOrDefaultAsync<AccountPresentation>(command);
     }
 
     public async Task<bool> RecordSuccessfulLoginAsync(Account account, CancellationToken cancellationToken)
