@@ -68,12 +68,12 @@
             </div>
             <div class="modal-body">
                 <div id="resourceEditorError" class="resources-alert resources-alert-error" role="alert" hidden></div>
-                <div id="resourceVersionStartField" class="resources-form-field" hidden>
-                    <label for="resourceVersionStart">新版本生效起日 <span>*</span></label>
+                <div class="resources-form-field">
+                    <label for="resourceVersionStart">生效起日 <span>*</span></label>
                     <input id="resourceVersionStart" type="date" required />
                 </div>
-                <div id="resourceVersionEndField" class="resources-form-field" hidden>
-                    <label for="resourceVersionEnd">新版本生效迄日 <span>*</span></label>
+                <div class="resources-form-field">
+                    <label for="resourceVersionEnd">生效迄日 <span>*</span></label>
                     <input id="resourceVersionEnd" type="date" required />
                 </div>
                 <div id="resourceEditorNameField" class="resources-form-field">
@@ -183,7 +183,12 @@
                     </div>
                 </form>
             </div>
-            <div class="modal-footer"><button type="button" class="resources-button resources-button-secondary" data-bs-dismiss="modal">關閉</button></div>
+            <div class="modal-footer">
+                <button id="backToResourceVersionsButton" type="button" class="resources-button resources-button-secondary">
+                    <i class="bi bi-arrow-left" aria-hidden="true"></i>返回歷年版本
+                </button>
+                <button type="button" class="resources-button resources-button-secondary" data-bs-dismiss="modal">關閉</button>
+            </div>
         </div>
     </div>
 </div>

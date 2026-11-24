@@ -27,7 +27,6 @@ erDiagram
         uniqueidentifier UIDRESCFGID PK
         uniqueidentifier UIDRESID FK
         int NUMRESCFGNO
-        nvarchar NVCHRESNAME
         int INTMAXUSER
         date DTMEFFECTSTART
         date DTMEFFECTEND

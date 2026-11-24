@@ -1,6 +1,7 @@
 @using EnterpriseResourceSchedulingSystem.Domain.Accounts
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
+    var isAdministrator = User.IsInRole(Account.AdministratorLevel);
     var isSchedule = ViewContext.RouteData.Values["controller"] is "Schedule"
         && ViewContext.RouteData.Values["action"] is "Index";
 }
@@ -13,10 +14,14 @@
 
 <div class="frontend-layout">
     <header class="frontend-header shadow-sm px-4 py-3">
-        <span class="frontend-system-name fw-bold">企業資源排程系統</span>
+        <span class="frontend-system-name fw-bold d-inline-flex align-items-center gap-2">
+            <img src="~/img/scheduling-logo.png" asp-append-version="true" alt="" width="32" height="32" />
+            企業資源排程系統
+        </span>
         <div class="frontend-header-actions">
             <span class="frontend-user-name">登入者：@(User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? "未設定姓名")</span>
-            @if (User.IsInRole(Account.AdministratorLevel))
+            <span class="frontend-user-name">權限：@(isAdministrator ? Account.AdministratorLevel : "一般使用者")</span>
+            @if (isAdministrator)
             {
                 <a asp-area="Backend" asp-controller="Users" asp-action="Index" class="btn btn-success btn-sm">後台管理</a>
             }

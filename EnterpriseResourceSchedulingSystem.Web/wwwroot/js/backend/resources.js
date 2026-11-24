@@ -19,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     let busy = false;
     let editingResource = null;
+    let editingVersion = null;
     let editingMasterResource = null;
     let deletingResource = null;
     let activeResource = null;
@@ -128,11 +129,6 @@ document.addEventListener("DOMContentLoaded", () => {
             fees.className = "resources-button resources-button-fees";
             fees.innerHTML = '<i class="bi bi-cash-coin" aria-hidden="true"></i>身分費率';
             fees.addEventListener("click", () => openFees(resource));
-            const edit = document.createElement("button");
-            edit.type = "button";
-            edit.className = "resources-button resources-button-edit";
-            edit.innerHTML = '<i class="bi bi-plus-square" aria-hidden="true"></i>新版本';
-            edit.addEventListener("click", () => openResourceEditor(resource));
             const editMaster = document.createElement("button");
             editMaster.type = "button";
             editMaster.className = "resources-button resources-button-secondary";
@@ -143,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
             remove.className = "resources-button resources-button-delete";
             remove.innerHTML = '<i class="bi bi-trash3" aria-hidden="true"></i>刪除';
             remove.addEventListener("click", () => openResourceDelete(resource));
-            group.append(versions, fees, edit, editMaster, remove);
+            group.append(versions, fees, editMaster, remove);
             actions.append(group);
             row.append(actions);
             tableBody.append(row);
@@ -221,25 +217,22 @@ document.addEventListener("DOMContentLoaded", () => {
         return new Date(Date.UTC(parts[0], parts[1] - 1, parts[2] + 1)).toISOString().slice(0, 10);
     }
     let activeVersions = [];
-    function openResourceEditor(resource = null) {
+    function openResourceEditor(resource = null, version = null) {
         if (busy) return;
         editingResource = resource;
-        byId("resourceEditorTitle").textContent = resource ? "建立設備／資源新版本" : "新增設備／資源";
-        byId("resourceVersionStartField").hidden = !resource;
-        byId("resourceVersionStart").disabled = !resource;
-        byId("resourceVersionStart").value = resource ? nextVersionStart() : "";
-        byId("resourceVersionEndField").hidden = !resource;
-        byId("resourceVersionEnd").disabled = !resource;
-        byId("resourceVersionEnd").value = "";
-        byId("saveResourceButton").textContent = resource ? "建立新版本" : "新增設備／資源";
-        byId("resourceEditorName").value = resource?.resourceName ?? "";
+        editingVersion = version;
+        byId("resourceEditorTitle").textContent = version ? `編輯第 ${version.resourceConfigNo} 版設定` : resource ? "建立設備／資源新版本" : "新增設備／資源";
+        byId("resourceVersionStart").value = version ? version.effectiveStart.slice(0, 10) : resource ? nextVersionStart() : todayTaipeiDate();
+        byId("resourceVersionEnd").value = version?.effectiveEnd.slice(0, 10) ?? "";
+        byId("saveResourceButton").textContent = version ? "儲存變更" : resource ? "建立新版本" : "新增設備／資源";
+        byId("resourceEditorName").value = version?.resourceName ?? resource?.resourceName ?? "";
         byId("resourceEditorNameField").hidden = Boolean(resource);
         byId("resourceEditorName").disabled = Boolean(resource);
-        byId("resourceEditorMaxUsers").value = resource?.maxUsers ?? 1;
-        byId("resourceEditorDescription").value = resource?.description ?? "";
+        byId("resourceEditorMaxUsers").value = version?.maxUsers ?? resource?.maxUsers ?? 1;
+        byId("resourceEditorDescription").value = (version ? version.description : resource?.description) ?? "";
         byId("resourceEditorError").hidden = true;
         resourceEditorModal.show();
-        window.setTimeout(() => byId("resourceEditorName").focus(), 150);
+        window.setTimeout(() => byId(resource ? "resourceVersionStart" : "resourceEditorName").focus(), 150);
     }
 
     function openResourceDelete(resource) {
@@ -398,7 +391,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     byId("resourceVersionsModal").addEventListener("hidden.bs.modal", () => openFees(resource, version), { once: true });
                     resourceVersionsModal.hide();
                 });
-                actions.append(feesButton);
+                const editButton = document.createElement("button");
+                editButton.type = "button";
+                editButton.className = "resources-button resources-button-fees";
+                editButton.textContent = "編輯版本";
+                editButton.addEventListener("click", () => {
+                    byId("resourceVersionsModal").addEventListener("hidden.bs.modal", () => openResourceEditor(resource, version), { once: true });
+                    resourceVersionsModal.hide();
+                });
+                const group = document.createElement("div");
+                group.className = "resources-row-actions";
+                group.append(editButton, feesButton);
+                actions.append(group);
                 row.append(actions);
                 body.append(row);
             }
@@ -407,6 +411,13 @@ document.addEventListener("DOMContentLoaded", () => {
             byId("resourceVersionsTableBody").innerHTML = '<tr><td colspan="6" class="resources-empty">無法載入歷年版本。</td></tr>';
         }
     }
+
+    byId("backToResourceVersionsButton").addEventListener("click", () => {
+        if (busy || !activeResource) return;
+        const resource = activeResource;
+        byId("resourceFeesModal").addEventListener("hidden.bs.modal", () => openVersions(resource), { once: true });
+        resourceFeesModal.hide();
+    });
 
     byId("addResourceVersionButton").addEventListener("click", () => {
         if (!activeResource) return;
@@ -465,28 +476,37 @@ document.addEventListener("DOMContentLoaded", () => {
         event.preventDefault();
         const form = event.currentTarget;
         if (busy || !form.reportValidity()) return;
-        const payload = editingResource
-            ? {
-                maxUsers: Number(byId("resourceEditorMaxUsers").value),
-                description: byId("resourceEditorDescription").value.trim() || null
-            }
-            : {
-                resourceName: byId("resourceEditorName").value.trim(),
-                maxUsers: Number(byId("resourceEditorMaxUsers").value),
-                description: byId("resourceEditorDescription").value.trim() || null
-            };
-        if (editingResource) {
-            payload.effectiveStart = byId("resourceVersionStart").value;
-            payload.effectiveEnd = byId("resourceVersionEnd").value;
-        }
-        const method = "POST";
-        const url = editingResource ? `${apiUrl}/${encodeURIComponent(editingResource.resourceId)}/versions` : apiUrl;
+        const resource = editingResource;
+        const version = editingVersion;
+        const payload = {
+            effectiveStart: byId("resourceVersionStart").value,
+            effectiveEnd: byId("resourceVersionEnd").value,
+            maxUsers: Number(byId("resourceEditorMaxUsers").value),
+            description: byId("resourceEditorDescription").value.trim() || null
+        };
+        if (!resource) payload.resourceName = byId("resourceEditorName").value.trim();
+
+        const versionsUrl = resource ? `${apiUrl}/${encodeURIComponent(resource.resourceId)}/versions` : apiUrl;
+        const url = version ? `${versionsUrl}/${encodeURIComponent(version.resourceConfigId)}` : versionsUrl;
+        const method = version ? "PUT" : "POST";
         setBusy(true);
         try {
             const result = await request(url, method, payload);
-            resourceEditorModal.hide();
-            setFeedback("resourcesFeedback", result.message || (editingResource ? "設備／資源資料已更新。" : "設備／資源已新增。"), true);
-            await loadPage(editingResource ? state.page : 1);
+            const editor = byId("resourceEditorModal");
+            if (version && editor.classList.contains("show")) {
+                await new Promise(resolve => {
+                    editor.addEventListener("hidden.bs.modal", resolve, { once: true });
+                    resourceEditorModal.hide();
+                });
+            } else {
+                resourceEditorModal.hide();
+            }
+            setFeedback("resourcesFeedback", result.message || (resource ? "設備／資源資料已更新。" : "設備／資源已新增。"), true);
+            await loadPage(resource ? state.page : 1);
+            if (version) {
+                setBusy(false);
+                await openVersions(resource);
+            }
         } catch (error) {
             const message = byId("resourceEditorError");
             message.textContent = error.message;

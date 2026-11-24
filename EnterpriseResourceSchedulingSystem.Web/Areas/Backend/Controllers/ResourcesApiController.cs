@@ -39,7 +39,7 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
     {
         try
         {
-            var result = await resources.CreateAsync(request.ResourceName, request.Description, request.MaxUsers, CurrentActor(), cancellationToken);
+            var result = await resources.CreateAsync(request.ResourceName, request.Description, request.MaxUsers, request.EffectiveStart, request.EffectiveEnd, CurrentActor(), cancellationToken);
             return result switch
             {
                 ResourceSaveResult.Saved => Ok(new { message = "設備／資源已新增。" }),
@@ -85,6 +85,22 @@ public sealed class ResourcesApiController(IResourceService resources, IResource
                 ResourceVersionCreateResult.NotFound => NotFound(new { message = "找不到這筆設備／資源資料。" }),
                 _ => StatusCode(StatusCodes.Status500InternalServerError)
             };
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [HttpPut("{resourceId:guid}/versions/{resourceConfigId:guid}")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateVersion(Guid resourceId, Guid resourceConfigId, [FromBody] UpdateResourceVersionRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await resources.UpdateVersionAsync(resourceId, resourceConfigId, request.Description, request.MaxUsers, request.EffectiveStart, request.EffectiveEnd, CurrentActor(), cancellationToken)
+                ? Ok(new { message = "設備／資源版本已更新。" })
+                : NotFound(new { message = "找不到這筆設備／資源版本。" });
         }
         catch (ArgumentException exception)
         {

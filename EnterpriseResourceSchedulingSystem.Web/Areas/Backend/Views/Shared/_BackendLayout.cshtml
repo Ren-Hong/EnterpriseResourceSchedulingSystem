@@ -1,3 +1,4 @@
+@using EnterpriseResourceSchedulingSystem.Domain.Accounts
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -10,8 +11,13 @@
 
 <div class="backend-layout">
     <header class="backend-header shadow-sm px-4 py-3">
-        <span class="backend-system-name fw-bold">企業資源排程系統</span>
-        <div class="d-flex align-items-center gap-2">
+        <span class="backend-system-name fw-bold d-inline-flex align-items-center gap-2">
+            <img src="~/img/scheduling-logo.png" asp-append-version="true" alt="" width="32" height="32" />
+            企業資源排程系統
+        </span>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="small fw-semibold me-2">登入者：@(User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? "未設定姓名")</span>
+            <span class="small fw-semibold me-2">權限：@(User.IsInRole(Account.AdministratorLevel) ? Account.AdministratorLevel : "一般使用者")</span>
             <a asp-area="Frontend" asp-controller="Schedule" asp-action="Index" class="btn backend-frontend-button btn-sm">前台作業</a>
             <form asp-area="Auth" asp-controller="Login" asp-action="Logout" method="post" class="m-0">
                 <button type="submit" class="btn btn-secondary btn-sm">登出</button>

@@ -2,6 +2,7 @@ using EnterpriseResourceSchedulingSystem.Application.Abstractions.Repositories;
 using EnterpriseResourceSchedulingSystem.Application.Abstractions.Persistence;
 using EnterpriseResourceSchedulingSystem.Application.Abstractions.Services;
 using EnterpriseResourceSchedulingSystem.Application.Dtos;
+using EnterpriseResourceSchedulingSystem.Domain.Resources;
 
 namespace EnterpriseResourceSchedulingSystem.Application.Services;
 
@@ -20,8 +21,9 @@ public sealed class ResourceService(IResourceRepository resources, IResourceConf
     }
     public Task<ResourceListItem?> FindByIdAsync(Guid resourceId, CancellationToken ct) => resources.FindByIdAsync(resourceId, ct);
     public Task<IReadOnlyList<ResourceVersionListItem>> GetVersionsAsync(Guid resourceId, CancellationToken ct) => resourceConfigs.GetVersionsAsync(resourceId, ct);
-    public Task<ResourceSaveResult> CreateAsync(string name, string? description, int maxUsers, string actor, CancellationToken ct)
+    public Task<ResourceSaveResult> CreateAsync(string name, string? description, int maxUsers, DateOnly effectiveStart, DateOnly effectiveEnd, string actor, CancellationToken ct)
     {
+        var period = new ResourceEffectivePeriod(effectiveStart, effectiveEnd);
         var resourceId = Guid.NewGuid();
         var normalizedName = NormalizeName(name);
         var normalizedDescription = NormalizeDescription(description);
@@ -31,7 +33,7 @@ public sealed class ResourceService(IResourceRepository resources, IResourceConf
         {
             var result = await resources.CreateAsync(resourceId, normalizedName, normalizedDescription, normalizedMaxUsers, normalizedActor, token);
             if (result == ResourceSaveResult.Saved)
-                await resourceConfigs.CreateInitialVersionAsync(resourceId, normalizedName, normalizedDescription, normalizedMaxUsers, normalizedActor, token);
+                await resourceConfigs.CreateInitialVersionAsync(resourceId, normalizedDescription, normalizedMaxUsers, period, normalizedActor, token);
             return result;
         }, ct);
     }
@@ -39,12 +41,15 @@ public sealed class ResourceService(IResourceRepository resources, IResourceConf
         => unitOfWork.ExecuteInTransactionAsync(token => resources.UpdateAsync(resourceId, NormalizeName(name), NormalizeActor(actor), token), ct);
     public Task<ResourceVersionCreateResult> CreateVersionAsync(Guid resourceId, string? description, int maxUsers, DateOnly effectiveStart, DateOnly effectiveEnd, string actor, CancellationToken ct)
     {
-        if (effectiveStart == default || effectiveEnd == default)
-            throw new ArgumentException("請填寫版本生效起日與迄日。", nameof(effectiveStart));
-        if (effectiveEnd < effectiveStart)
-            throw new ArgumentException("新版本生效迄日不可早於生效起日。", nameof(effectiveEnd));
-        return unitOfWork.ExecuteInTransactionAsync(token => resourceConfigs.CreateVersionAsync(resourceId, NormalizeDescription(description), NormalizeMaxUsers(maxUsers), effectiveStart, effectiveEnd, NormalizeActor(actor), token), ct);
+        var period = new ResourceEffectivePeriod(effectiveStart, effectiveEnd);
+        return unitOfWork.ExecuteInTransactionAsync(token => resourceConfigs.CreateVersionAsync(resourceId, NormalizeDescription(description), NormalizeMaxUsers(maxUsers), period, NormalizeActor(actor), token), ct);
     }
+    public Task<bool> UpdateVersionAsync(Guid resourceId, Guid resourceConfigId, string? description, int maxUsers, DateOnly effectiveStart, DateOnly effectiveEnd, string actor, CancellationToken ct)
+    {
+        var period = new ResourceEffectivePeriod(effectiveStart, effectiveEnd);
+        return resourceConfigs.UpdateVersionAsync(resourceId, resourceConfigId, NormalizeDescription(description), NormalizeMaxUsers(maxUsers), period, NormalizeActor(actor), ct);
+    }
+
     public Task<ResourceDeleteResult> DeleteAsync(Guid resourceId, CancellationToken ct) => resources.DeleteAsync(resourceId, ct);
 
     private static string NormalizeName(string? value)

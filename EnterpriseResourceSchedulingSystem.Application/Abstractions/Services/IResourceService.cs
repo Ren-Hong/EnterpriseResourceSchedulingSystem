@@ -18,7 +18,7 @@ public interface IResourceService
     Task<IReadOnlyList<ResourceVersionListItem>> GetVersionsAsync(Guid resourceId, CancellationToken cancellationToken);
 
     /// <summary>建立設備主檔及初始設定版本，回傳建立結果。</summary>
-    Task<ResourceSaveResult> CreateAsync(string name, string? description, int maxUsers, string actor, CancellationToken cancellationToken);
+    Task<ResourceSaveResult> CreateAsync(string name, string? description, int maxUsers, DateOnly effectiveStart, DateOnly effectiveEnd, string actor, CancellationToken cancellationToken);
 
     /// <summary>更新設備主檔名稱，回傳更新結果。</summary>
     Task<ResourceUpdateResult> UpdateAsync(Guid resourceId, string name, string actor, CancellationToken cancellationToken);
@@ -28,5 +28,7 @@ public interface IResourceService
 
     /// <summary>刪除設備主檔，回傳刪除成功、不存在或仍被引用等結果。</summary>
     Task<ResourceDeleteResult> DeleteAsync(Guid resourceId, CancellationToken cancellationToken);
-}
 
+    /// <summary>更新指定設備版本的設定資料。</summary>
+    Task<bool> UpdateVersionAsync(Guid resourceId, Guid resourceConfigId, string? description, int maxUsers, DateOnly effectiveStart, DateOnly effectiveEnd, string actor, CancellationToken cancellationToken);
+}
