@@ -7,6 +7,8 @@
 }
 
 @section Styles {
+    <link rel="stylesheet" href="~/lib/tippy/tippy.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/lib/tippy/scale-subtle.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/frontend/scheduler.css" asp-append-version="true" />
 }
 
@@ -237,5 +239,7 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+    <script src="~/lib/popper/popper.min.js" asp-append-version="true"></script>
+    <script src="~/lib/tippy/tippy.umd.min.js" asp-append-version="true"></script>
     <script src="~/js/frontend/schedule.js" asp-append-version="true"></script>
 }

@@ -388,6 +388,71 @@ document.addEventListener("DOMContentLoaded", () => {
         if (slot.status === "COMPLETED") return "completed";
         return slot.booked > 0 ? "booked" : "open";
     }
+    const eventTime = new Intl.DateTimeFormat("zh-TW", {
+        timeZone: "UTC", hour: "numeric", minute: "2-digit"
+    });
+    const bookingFee = new Intl.NumberFormat("zh-TW", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    function eventTimeRange(event) {
+        return `${eventTime.format(event.start)} – ${eventTime.format(event.end)}`;
+    }
+
+    function renderCalendarEvent(info) {
+        const slot = info.event.extendedProps.slot;
+        const remaining = slot.status === "OPEN" ? Math.max(0, slot.capacity - slot.booked) : 0;
+        const content = document.createElement("div");
+        content.className = "scheduler-calendar-event";
+        const time = document.createElement("div");
+        time.textContent = eventTimeRange(info.event);
+        const details = document.createElement("div");
+        details.className = "scheduler-calendar-event-details";
+        const name = document.createElement("span");
+        name.className = "scheduler-calendar-event-name";
+        name.textContent = slot.resourceName;
+        const capacity = document.createElement("span");
+        capacity.textContent = `剩 ${remaining}/${slot.capacity}`;
+        details.append(name, capacity);
+        content.append(time, details);
+        return { domNodes: [content] };
+    }
+
+    function mountCalendarTooltip(info) {
+        const slot = info.event.extendedProps.slot;
+        const content = document.createElement("div");
+        content.className = "scheduler-tooltip";
+        const name = document.createElement("strong");
+        name.textContent = slot.resourceName;
+        const summary = document.createElement("div");
+        summary.textContent = `${eventTimeRange(info.event)} · ${slotLabels[slotDisplayStatus(slot)]}`;
+        content.append(name, summary);
+
+        const bookings = slot.bookings ?? [];
+        const list = document.createElement("ul");
+        for (const booking of bookings) {
+            const item = document.createElement("li");
+            item.textContent = `${booking.displayName} · ${booking.identityTypeName ?? "未設定身分"} · ${bookingFee.format(booking.fee)} 元`;
+            list.append(item);
+        }
+        if (bookings.length) {
+            content.append(list);
+        } else {
+            const empty = document.createElement("div");
+            empty.textContent = "目前無有效預約";
+            content.append(empty);
+        }
+
+        if (typeof window.tippy !== "function") {
+            info.el.title = [...content.children].map(node => node.textContent).join("\n");
+            return;
+        }
+
+        window.tippy(info.el, {
+            content, theme: "erss-schedule", placement: "top", maxWidth: 360,
+            appendTo: () => document.body, delay: [180, 0], duration: [260, 160],
+            animation: "scale-subtle", trigger: "mouseenter focus", touch: false, allowHTML: false
+        });
+    }
+
     function renderResourceFields(empty, fields, values) {
         empty.hidden = values.length > 0;
         fields.hidden = values.length === 0;
@@ -804,6 +869,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 failure(error);
             });
         },
+        eventInteractive: true,
+        eventContent: renderCalendarEvent,
+        eventDidMount: mountCalendarTooltip,
+        eventWillUnmount: info => info.el._tippy?.destroy(),
         eventClick(info) {
             showSlot(info.event.extendedProps.slot);
         },

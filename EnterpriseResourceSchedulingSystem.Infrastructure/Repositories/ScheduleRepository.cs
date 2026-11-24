@@ -11,6 +11,8 @@ namespace EnterpriseResourceSchedulingSystem.Infrastructure.Repositories;
 
 public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleRepository
 {
+    private sealed record ScheduleBookingRow(Guid SlotId, string DisplayName, string? IdentityTypeName, decimal Fee);
+
     public async Task<IReadOnlyList<ScheduleSlot>> GetSlotsAsync(DateTime fromUtc, DateTime toUtc, Guid[] resources, Guid[] users, bool includeCancelled, bool includeUnbooked, CancellationToken ct)
     {
         if (resources.Length == 0 || users.Length == 0) return Array.Empty<ScheduleSlot>();
@@ -20,6 +22,7 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
                    c.NUMRESCFGNO AS Version, s.DTMSTARTAT AS Start, s.DTMENDAT AS [End],
                    s.INTCAPACITY AS Capacity, bookings.Booked, s.NVCHSTATUS AS Status, s.NVCHNOTE AS Note,
                    c.DTMEFFECTSTART AS EffectiveStart, c.DTMEFFECTEND AS EffectiveEnd, c.INTMAXUSER AS MaxUsers, c.UIDRESCFGID AS ResourceConfigId
+            INTO #CalendarSlots                                                 --把查到的寫進站存表 沒有讓DAPPER去讀 這段不包含 QueryMultiple
             FROM dbo.ERSSSLOTTBL AS s
             JOIN dbo.ERSSRESTBL AS r ON r.UIDRESID = s.UIDRESID
             LEFT JOIN dbo.ERSSRESCFGTBL AS c ON c.UIDRESCFGID = s.UIDRESCFGID
@@ -35,14 +38,38 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
                   SELECT 1 FROM dbo.ERSSSCHTBL AS b
                   WHERE b.UIDSLOTID = s.UIDSLOTID AND b.UIDUSERID IN @Users
                     AND (b.NVCHSTATUS = N'BOOKED' OR s.NVCHSTATUS = N'CANCELLED')
-              ))
-            ORDER BY s.DTMSTARTAT, s.UIDSLOTID;
+              ));
+
+            SELECT SlotId, ResourceId, ResourceName, Version, Start, [End], Capacity, Booked,
+                   Status, Note, EffectiveStart, EffectiveEnd, MaxUsers, ResourceConfigId
+            FROM #CalendarSlots
+            ORDER BY Start, SlotId;
+
+            SELECT b.UIDSLOTID AS SlotId,
+                   COALESCE(NULLIF(TRIM(u.NVCHDISPLAYNAME), N''), N'未設定姓名') AS DisplayName,
+                   i.NVCHIDENTITYNAME AS IdentityTypeName, b.NUMFEE AS Fee
+            FROM #CalendarSlots AS s
+            JOIN dbo.ERSSSCHTBL AS b ON b.UIDSLOTID = s.SlotId
+            JOIN dbo.ERSSUSERTBL AS u ON u.UIDUSERID = b.UIDUSERID
+            LEFT JOIN dbo.ERSSIDNTBL AS i ON i.UIDIDNTYPE = b.UIDIDNTYPE
+            WHERE b.NVCHSTATUS = N'BOOKED'
+            ORDER BY b.UIDSLOTID, u.NVCHDISPLAYNAME, b.UIDSCHID;
+
+            DROP TABLE #CalendarSlots;
             """;
-        return (await unitOfWork.Connection.QueryAsync<ScheduleSlot>(Command(sql, new
+        var command = Command(sql, new
         {
             FromUtc = fromUtc, ToUtc = toUtc, Resources = resources, Users = users,
             IncludeCancelled = includeCancelled, IncludeUnbooked = includeUnbooked
-        }, ct))).AsList();
+        }, ct);
+        using var results = await unitOfWork.Connection.QueryMultipleAsync(command);
+        var slots = await results.ReadAsync<ScheduleSlot>();
+        var bookings = await results.ReadAsync<ScheduleBookingRow>();
+        var bookingsBySlot = bookings.ToLookup(
+            booking => booking.SlotId,
+            booking => new ScheduleSlotBooking(booking.DisplayName, booking.IdentityTypeName, booking.Fee));
+
+        return slots.Select(slot => slot with { Bookings = bookingsBySlot[slot.SlotId].ToArray() }).ToArray(); //把兩邊的資料依照SlotId組起來
     }
 
     public async Task<IReadOnlyList<ScheduleUserOption>> GetPermittedUsersAsync(Guid slotId, CancellationToken ct)

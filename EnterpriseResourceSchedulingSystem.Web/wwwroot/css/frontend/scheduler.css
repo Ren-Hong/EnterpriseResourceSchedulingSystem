@@ -260,3 +260,16 @@
     font-weight: 650;
     font-variant-numeric: tabular-nums;
 }
+
+.scheduler-calendar-event { min-width: 0; padding: 1px 3px; line-height: 1.2; }
+.scheduler-calendar-event-details { display: flex; align-items: baseline; gap: 4px; }
+.scheduler-calendar-event-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scheduler-calendar-event-details > :last-child { flex: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tippy-box[data-theme~="erss-schedule"] {
+    --scheduler-tooltip-background: #dff2e8;
+    background: var(--scheduler-tooltip-background);
+    color: #164f43;
+}
+.tippy-box[data-theme~="erss-schedule"] .tippy-arrow { color: var(--scheduler-tooltip-background); }
+.scheduler-tooltip { display: grid; gap: 5px; overflow-wrap: anywhere; }
+.scheduler-tooltip ul { margin: 0; padding-inline-start: 1.15rem; }
