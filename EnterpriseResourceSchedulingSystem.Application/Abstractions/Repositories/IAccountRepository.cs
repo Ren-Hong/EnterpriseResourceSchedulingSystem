@@ -1,4 +1,4 @@
-using EnterpriseResourceSchedulingSystem.Domain.Entities;
+using EnterpriseResourceSchedulingSystem.Domain.Accounts;
 
 namespace EnterpriseResourceSchedulingSystem.Application.Abstractions.Repositories;
 

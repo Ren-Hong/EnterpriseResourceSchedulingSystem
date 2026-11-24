@@ -1,4 +1,4 @@
-namespace EnterpriseResourceSchedulingSystem.Domain.Entities;
+namespace EnterpriseResourceSchedulingSystem.Domain.Accounts;
 
 public sealed record Account(
     Guid AccountId,

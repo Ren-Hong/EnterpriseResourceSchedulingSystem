@@ -3,7 +3,7 @@ using EnterpriseResourceSchedulingSystem.Application.Abstractions.Persistence;
 using EnterpriseResourceSchedulingSystem.Application.Abstractions.Security;
 using EnterpriseResourceSchedulingSystem.Application.Abstractions.Services;
 using EnterpriseResourceSchedulingSystem.Application.Services;
-using EnterpriseResourceSchedulingSystem.Domain.Entities;
+using EnterpriseResourceSchedulingSystem.Domain.Accounts;
 using EnterpriseResourceSchedulingSystem.Infrastructure.Repositories;
 using EnterpriseResourceSchedulingSystem.Infrastructure.Persistence;
 using EnterpriseResourceSchedulingSystem.Infrastructure.Security;
@@ -85,13 +85,13 @@ app.MapAreaControllerRoute(
 app.MapAreaControllerRoute(
     name: "frontend",
     areaName: "Frontend",
-    pattern: "Frontend/{controller=Home}/{action=Index}/{id?}")
+    pattern: "Frontend/{controller=Schedule}/{action=Index}/{id?}")
     .WithStaticAssets();
 
 app.MapAreaControllerRoute(
     name: "backend",
     areaName: "Backend",
-    pattern: "Backend/{controller=Home}/{action=Index}/{id?}")
+    pattern: "Backend/{controller=Users}/{action=Index}/{id?}")
     .WithStaticAssets();
 
 app.MapControllerRoute(

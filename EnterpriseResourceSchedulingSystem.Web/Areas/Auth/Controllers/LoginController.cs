@@ -67,6 +67,6 @@ public sealed class LoginController(IAccountAuthenticationService? authenticatio
     {
         return Url.IsLocalUrl(returnUrl)
             ? LocalRedirect(returnUrl)
-            : RedirectToAction("Index", "Home", new { area = "Frontend" });
+            : RedirectToAction("Index", "Schedule", new { area = "Frontend" });
     }
 }

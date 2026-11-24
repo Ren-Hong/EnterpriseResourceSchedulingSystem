@@ -6,5 +6,5 @@ namespace EnterpriseResourceSchedulingSystem.Web.Areas.Frontend.Controllers;
 public sealed class HomeController : Controller
 {
     [HttpGet]
-    public IActionResult Index() => View();
+    public IActionResult Index() => RedirectToAction(nameof(ScheduleController.Index), "Schedule");
 }

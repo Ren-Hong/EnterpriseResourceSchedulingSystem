@@ -11,23 +11,13 @@
 <div class="backend-layout">
     <header class="backend-header shadow-sm px-4 py-3">
         <span class="backend-system-name fw-bold">企業資源排程系統</span>
-        <a asp-area="Frontend" asp-controller="Home" asp-action="Index" class="btn backend-frontend-button btn-sm">前台作業</a>
+        <a asp-area="Frontend" asp-controller="Schedule" asp-action="Index" class="btn backend-frontend-button btn-sm">前台作業</a>
     </header>
 
     <div class="backend-body">
         <aside class="backend-sidebar" aria-label="後台側邊導覽">
             <div class="backend-sidebar-heading">功能選單</div>
             <nav class="backend-sidebar-nav" aria-label="後台功能選單">
-                <div class="backend-nav-group">
-                    <span class="backend-nav-label">總覽</span>
-                    <a asp-area="Backend" asp-controller="Home" asp-action="Index"
-                       class="backend-sidebar-item @(ViewContext.RouteData.Values["controller"] is "Home" ? "active" : null)"
-                       aria-current="@(ViewContext.RouteData.Values["controller"] is "Home" ? "page" : null)">
-                        <i class="bi bi-speedometer2 backend-nav-icon" aria-hidden="true"></i>
-                        <span>後台首頁</span>
-                    </a>
-                </div>
-
                 <div class="backend-nav-group">
                     <span class="backend-nav-label">人員與權限</span>
                     <a asp-area="Backend" asp-controller="Users" asp-action="Index"

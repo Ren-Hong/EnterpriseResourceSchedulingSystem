@@ -3,6 +3,10 @@ using EnterpriseResourceSchedulingSystem.Application.Abstractions.Persistence;
 using EnterpriseResourceSchedulingSystem.Application.Abstractions.Repositories;
 using EnterpriseResourceSchedulingSystem.Application.Dtos;
 
+using EnterpriseResourceSchedulingSystem.Domain.Scheduling;
+using Slot = EnterpriseResourceSchedulingSystem.Domain.Scheduling.ScheduleSlot;
+using ScheduleSlot = EnterpriseResourceSchedulingSystem.Application.Dtos.ScheduleSlot;
+
 namespace EnterpriseResourceSchedulingSystem.Infrastructure.Repositories;
 
 public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleRepository
@@ -113,7 +117,7 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
               AND NVCHSTATUS <> N'CANCELLED';
             """, new { ResourceId = resourceId, StartUtc = startUtc, EndUtc = endUtc }, ct));
 
-    public async Task<Guid> CreateSlotAsync(CreateScheduleSlot request, Guid configId, int capacity, DateTime startUtc, DateTime endUtc, string actor, CancellationToken ct)
+    public async Task<Guid> CreateSlotAsync(Guid resourceId, Guid configId, int capacity, DateTime startUtc, DateTime endUtc, string? note, string actor, CancellationToken ct)
     {
         const string sql = """
             DECLARE @Created TABLE (SlotId uniqueidentifier);
@@ -126,9 +130,36 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
             """;
         return await unitOfWork.Connection.QuerySingleAsync<Guid>(Command(sql, new
         {
-            request.ResourceId, ConfigId = configId, StartUtc = startUtc, EndUtc = endUtc,
-            Capacity = capacity, Note = request.Note?.Trim(), Actor = actor
+            ResourceId = resourceId, ConfigId = configId, StartUtc = startUtc, EndUtc = endUtc,
+            Capacity = capacity, Note = note?.Trim(), Actor = actor
         }, ct));
+    }
+
+    public Task<bool> LockBookingUserAsync(Guid userId, CancellationToken ct)
+        => unitOfWork.Connection.ExecuteScalarAsync<bool>(Command("""
+            SELECT CAST(1 AS bit)
+            FROM dbo.ERSSUSERTBL WITH (UPDLOCK, HOLDLOCK)
+            WHERE UIDUSERID = @UserId;
+            """, new { UserId = userId }, ct));
+
+    public async Task<(Slot Slot, DateTime UtcNow)?> GetSlotForUpdateAsync(Guid slotId, CancellationToken ct)
+    {
+        const string sql = """
+            SELECT s.UIDSLOTID AS SlotId, s.NVCHSTATUS AS Status, s.DTMSTARTAT AS StartsAtUtc,
+                   s.INTCAPACITY AS Capacity, c.INTMAXUSER AS CapacityLimit,
+                   (SELECT COUNT(*) FROM dbo.ERSSSCHTBL AS b
+                    WHERE b.UIDSLOTID = s.UIDSLOTID AND b.NVCHSTATUS = N'BOOKED') AS BookedCount,
+                   SYSUTCDATETIME() AS UtcNow
+            FROM dbo.ERSSSLOTTBL AS s WITH (UPDLOCK, HOLDLOCK)
+            LEFT JOIN dbo.ERSSRESCFGTBL AS c ON c.UIDRESCFGID = s.UIDRESCFGID
+            WHERE s.UIDSLOTID = @SlotId;
+            """;
+
+        var row = await unitOfWork.Connection.QuerySingleOrDefaultAsync<SlotForUpdateRow>(Command(sql, new { SlotId = slotId }, ct));
+        if (row is null) return null;
+
+        Enum.TryParse<ScheduleSlotStatus>(row.Status, ignoreCase: true, out var status);
+        return (new Slot(row.SlotId, status, row.StartsAtUtc, row.Capacity, row.BookedCount, row.CapacityLimit), row.UtcNow);
     }
 
     public async Task<bool> IncreaseCapacityAsync(Guid slotId, int capacity, string actor, CancellationToken ct)
@@ -148,22 +179,7 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
 
     public async Task<bool> BookAsync(Guid slotId, Guid userId, string actor, CancellationToken ct)
     {
-        const string sql = """
-            SELECT UIDUSERID
-            FROM dbo.ERSSUSERTBL WITH (UPDLOCK, HOLDLOCK)
-            WHERE UIDUSERID = @UserId;
-            """;
         var parameters = new { SlotId = slotId, UserId = userId, Actor = actor };
-        if (await unitOfWork.Connection.QuerySingleOrDefaultAsync<Guid?>(Command(sql, parameters, ct)) is null)
-            return false;
-
-        const string lockSlot = """
-            SELECT UIDSLOTID FROM dbo.ERSSSLOTTBL WITH (UPDLOCK, HOLDLOCK)
-            WHERE UIDSLOTID = @SlotId AND NVCHSTATUS = N'OPEN';
-            """;
-        if (await unitOfWork.Connection.QuerySingleOrDefaultAsync<Guid?>(Command(lockSlot, parameters, ct)) is null)
-            return false;
-
         const string insert = """
             INSERT INTO dbo.ERSSSCHTBL (UIDSLOTID, UIDUSERID, UIDIDNTYPE, NUMFEE, VCHCREATEBY)
             SELECT s.UIDSLOTID, u.UIDUSERID, u.UIDIDNTYPE, fee.NUMFEE, @Actor
@@ -229,6 +245,9 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
             """;
         return await unitOfWork.Connection.ExecuteScalarAsync<bool>(Command(sql, new { SlotId = slotId, Actor = actor }, ct));
     }
+
+    private sealed record SlotForUpdateRow(Guid SlotId, string Status, DateTime StartsAtUtc,
+        int Capacity, int? CapacityLimit, int BookedCount, DateTime UtcNow);
 
     private CommandDefinition Command(string sql, object parameters, CancellationToken ct)
         => new(sql, parameters, transaction: unitOfWork.Transaction, cancellationToken: ct);

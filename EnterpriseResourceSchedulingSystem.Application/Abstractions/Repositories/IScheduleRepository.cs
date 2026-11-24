@@ -25,7 +25,13 @@ public interface IScheduleRepository
     Task<bool> HasOverlapAsync(Guid resourceId, DateTime startUtc, DateTime endUtc, CancellationToken ct);
 
     /// <summary>建立空白時段，保存選定的設定版本，並回傳時段識別碼。</summary>
-    Task<Guid> CreateSlotAsync(CreateScheduleSlot request, Guid configId, int capacity, DateTime startUtc, DateTime endUtc, string actor, CancellationToken ct);
+    Task<Guid> CreateSlotAsync(Guid resourceId, Guid configId, int capacity, DateTime startUtc, DateTime endUtc, string? note, string actor, CancellationToken ct);
+
+    /// <summary>鎖定預約人員，避免同一人員的預約同時通過撞期檢查。</summary>
+    Task<bool> LockBookingUserAsync(Guid userId, CancellationToken ct);
+
+    /// <summary>在目前交易中鎖定時段，並讀取業務判斷所需的資料及資料庫 UTC 時間。</summary>
+    Task<(Domain.Scheduling.ScheduleSlot Slot, DateTime UtcNow)?> GetSlotForUpdateAsync(Guid slotId, CancellationToken ct);
 
     /// <summary>增加尚未開始的開放時段名額，新增後的名額不得超過設備版本上限。</summary>
     Task<bool> IncreaseCapacityAsync(Guid slotId, int capacity, string actor, CancellationToken ct);

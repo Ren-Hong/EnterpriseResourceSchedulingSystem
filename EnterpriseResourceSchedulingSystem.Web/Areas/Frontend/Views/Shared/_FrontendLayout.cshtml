@@ -1,8 +1,6 @@
-@using EnterpriseResourceSchedulingSystem.Domain.Entities
+@using EnterpriseResourceSchedulingSystem.Domain.Accounts
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
-    var isHome = ViewContext.RouteData.Values["controller"] is "Home"
-        && ViewContext.RouteData.Values["action"] is "Index";
     var isSchedule = ViewContext.RouteData.Values["controller"] is "Schedule"
         && ViewContext.RouteData.Values["action"] is "Index";
 }
@@ -20,15 +18,12 @@
             <span class="frontend-user-name">登入者：@(User.FindFirst(System.Security.Claims.ClaimTypes.GivenName)?.Value ?? "未設定姓名")</span>
             @if (User.IsInRole(Account.AdministratorLevel))
             {
-                <a asp-area="Backend" asp-controller="Home" asp-action="Index" class="btn btn-success btn-sm">後台管理</a>
+                <a asp-area="Backend" asp-controller="Users" asp-action="Index" class="btn btn-success btn-sm">後台管理</a>
             }
         </div>
     </header>
 
     <nav class="frontend-navbar" aria-label="前台功能選單">
-        <a asp-area="Frontend" asp-controller="Home" asp-action="Index"
-           class="frontend-navbar-item @(isHome ? "active" : null)"
-           aria-current="@(isHome ? "page" : null)"><i class="bi bi-house-door" aria-hidden="true"></i>首頁</a>
         <a asp-area="Frontend" asp-controller="Schedule" asp-action="Index"
            class="frontend-navbar-item @(isSchedule ? "active" : null)"
            aria-current="@(isSchedule ? "page" : null)"><i class="bi bi-calendar3" aria-hidden="true"></i>排程主頁</a>

@@ -9,7 +9,7 @@ public class HomeController : Controller
 {
     public IActionResult Index()
     {
-        return RedirectToAction("Index", "Home", new { area = "Frontend" });
+        return RedirectToAction("Index", "Schedule", new { area = "Frontend" });
     }
 
     [AllowAnonymous]

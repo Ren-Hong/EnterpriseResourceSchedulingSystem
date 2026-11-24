@@ -1,7 +1,7 @@
 using Dapper;
 using EnterpriseResourceSchedulingSystem.Application.Abstractions.Persistence;
 using EnterpriseResourceSchedulingSystem.Application.Abstractions.Repositories;
-using EnterpriseResourceSchedulingSystem.Domain.Entities;
+using EnterpriseResourceSchedulingSystem.Domain.Accounts;
 using Microsoft.Data.SqlClient;
 
 namespace EnterpriseResourceSchedulingSystem.Infrastructure.Repositories;
