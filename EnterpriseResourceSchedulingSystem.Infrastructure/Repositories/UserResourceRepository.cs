@@ -21,7 +21,7 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
         const string assignedSql = """ 
             SELECT r.UIDRESID AS ResourceId, r.NVCHRESNAME AS ResourceName,
                    ur.VCHCREATEBY AS CreatedBy, ur.DTMCREATEDAT AS CreatedAt
-            FROM dbo.ERSSUSERRES AS ur
+            FROM dbo.ERSSUSERRESTBL AS ur
             INNER JOIN dbo.ERSSRESTBL AS r ON r.UIDRESID = ur.UIDRESID
             WHERE ur.UIDUSERID = @UserId
             ORDER BY r.NVCHRESNAME;
@@ -33,7 +33,7 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
             FROM dbo.ERSSRESTBL AS r
             WHERE NOT EXISTS
             (
-                SELECT 1 FROM dbo.ERSSUSERRES AS ur
+                SELECT 1 FROM dbo.ERSSUSERRESTBL AS ur
                 WHERE ur.UIDUSERID = @UserId AND ur.UIDRESID = r.UIDRESID
             )
             ORDER BY r.NVCHRESNAME;
@@ -49,7 +49,7 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
     public async Task<AssignResourceResult> AssignAsync(Guid userId, Guid resourceId, string actor, CancellationToken cancellationToken)
     {
         const string sql = """
-            INSERT INTO dbo.ERSSUSERRES (UIDUSERID, UIDRESID, VCHCREATEBY)
+            INSERT INTO dbo.ERSSUSERRESTBL (UIDUSERID, UIDRESID, VCHCREATEBY)
             VALUES (@UserId, @ResourceId, @Actor);
             """;
         var command = new CommandDefinition(sql, new { UserId = userId, ResourceId = resourceId, Actor = actor }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
@@ -70,7 +70,7 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
 
     public async Task<bool> RevokeAsync(Guid userId, Guid resourceId, CancellationToken cancellationToken)
     {
-        const string sql = "DELETE FROM dbo.ERSSUSERRES WHERE UIDUSERID = @UserId AND UIDRESID = @ResourceId;";
+        const string sql = "DELETE FROM dbo.ERSSUSERRESTBL WHERE UIDUSERID = @UserId AND UIDRESID = @ResourceId;";
         var command = new CommandDefinition(sql, new { UserId = userId, ResourceId = resourceId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         return await unitOfWork.Connection.ExecuteAsync(command) == 1;
     }

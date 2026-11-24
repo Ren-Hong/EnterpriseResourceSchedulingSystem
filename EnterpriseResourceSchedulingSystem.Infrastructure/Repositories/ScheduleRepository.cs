@@ -52,7 +52,7 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
                    COALESCE(NULLIF(LTRIM(RTRIM(u.NVCHDISPLAYNAME)), N''), N'未設定姓名') AS DisplayName,
                    u.UIDIDNTYPE AS IdentityTypeId, i.NVCHIDENTITYNAME AS IdentityTypeName
             FROM dbo.ERSSSLOTTBL AS s
-            JOIN dbo.ERSSUSERRES AS access ON access.UIDRESID = s.UIDRESID
+            JOIN dbo.ERSSUSERRESTBL AS access ON access.UIDRESID = s.UIDRESID
             JOIN dbo.ERSSUSERTBL AS u ON u.UIDUSERID = access.UIDUSERID
             LEFT JOIN dbo.ERSSIDNTBL AS i ON i.UIDIDNTYPE = u.UIDIDNTYPE
             WHERE s.UIDSLOTID = @SlotId
@@ -184,7 +184,7 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
             INSERT INTO dbo.ERSSSCHTBL (UIDSLOTID, UIDUSERID, UIDIDNTYPE, NUMFEE, VCHCREATEBY)
             SELECT s.UIDSLOTID, u.UIDUSERID, u.UIDIDNTYPE, fee.NUMFEE, @Actor
             FROM dbo.ERSSSLOTTBL AS s
-            JOIN dbo.ERSSUSERRES AS access ON access.UIDRESID = s.UIDRESID AND access.UIDUSERID = @UserId
+            JOIN dbo.ERSSUSERRESTBL AS access ON access.UIDRESID = s.UIDRESID AND access.UIDUSERID = @UserId
             JOIN dbo.ERSSUSERTBL AS u ON u.UIDUSERID = access.UIDUSERID
             JOIN dbo.ERSSRESFEETBL AS fee ON fee.UIDRESCFGID = s.UIDRESCFGID AND fee.UIDIDNTYPE = u.UIDIDNTYPE
             WHERE s.UIDSLOTID = @SlotId AND s.NVCHSTATUS = N'OPEN'

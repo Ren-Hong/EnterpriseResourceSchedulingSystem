@@ -1,6 +1,6 @@
 # ERSS 資料表與關聯
 
-此圖依 `InitializeErss.sql` 與 `UpgradeSchedulingSchema.sql` 執行後的 ERSS schema 整理。
+此圖依 ErssSchema.sql 建立的 ERSS 資料表整理。
 
 ```mermaid
 erDiagram
@@ -38,7 +38,7 @@ erDiagram
         uniqueidentifier UIDIDNTYPE FK
         decimal NUMFEE
     }
-    ERSSUSERRES {
+    ERSSUSERRESTBL {
         uniqueidentifier UIDUSERID PK, FK
         uniqueidentifier UIDRESID PK, FK
         date DTMEFFECTSTART
@@ -64,8 +64,8 @@ erDiagram
     ERSSRESTBL ||--o{ ERSSRESCFGTBL : "資源版本"
     ERSSRESCFGTBL ||--o{ ERSSRESFEETBL : "版本費率"
     ERSSIDNTBL ||--o{ ERSSRESFEETBL : "身分別費率"
-    ERSSUSERTBL ||--o{ ERSSUSERRES : "人員資源權限"
-    ERSSRESTBL ||--o{ ERSSUSERRES : "可用資源"
+    ERSSUSERTBL ||--o{ ERSSUSERRESTBL : "人員資源權限"
+    ERSSRESTBL ||--o{ ERSSUSERRESTBL : "可用資源"
     ERSSRESTBL ||--o{ ERSSSLOTTBL : "資源時段"
     ERSSRESCFGTBL ||--o{ ERSSSLOTTBL : "時段採用的資源版本"
     ERSSSLOTTBL ||--o{ ERSSSCHTBL : "一個時段多筆實際預約"
@@ -79,16 +79,11 @@ erDiagram
 - `ERSSUSERTBL.UIDIDNTYPE` 可為 `NULL`；有身分別時參照 `ERSSIDNTBL`。
 - `ERSSRESTBL` 是穩定資源主檔；`ERSSRESCFGTBL` 保存每次設定版本與生效區間。
 - `ERSSRESCFGTBL` 保存設定版本的生效起訖（`DATE`），結束日必填；持續有效版本以 `9999-12-31` 表示；新增版本可與舊版期間重疊，費率按版本設定。`ERSSRESFEETBL` 每個版本每種身分別一筆，只保存版本、身分別及費用。
-- `ERSSUSERRES` 是人員與資源的多對多使用權限，複合主鍵為 `(UIDUSERID, UIDRESID)`。
+- `ERSSUSERRESTBL` 是人員與資源的多對多使用權限，複合主鍵為 `(UIDUSERID, UIDRESID)`。
 - `ERSSSLOTTBL` 是可排時段，不是實際預約；容量可低於設定版本的資源人數上限。
 - 預約依時段的設定版本與預約人的身分別查詢 `ERSSRESFEETBL`，並將當次金額寫入 `ERSSSCHTBL.NUMFEE`。
 - `ERSSSCHTBL` 是實際預約，一人一筆；每筆保留預約身分及 `NUMFEE` 金額快照。
 
-## 舊表遷移
+## 初始化
 
-- 舊 `ERSSSCHTBL`（可排時段）更名為 `ERSSSLOTTBL`。
-- 舊 `ERSSSCHUSERTBL`（時段人員明細）更名為 `ERSSSCHTBL`。
-- 既有資源初始化為設定版本 1；既有費率指向版本 1；既有時段亦指向版本 1。
-- 升級會移除舊的時段費率快照及其外鍵，既有預約保留 `NUMFEE`。
-- `UpgradeResourceFeeVersioning.sql` 會將舊費率的共同生效期間移到資源版本，並移除費率列日期。若同一版本內各身分期間不一致或同一身分有多筆費率，遷移會停止並保留原資料，需先拆成多個設定版本。
-
+在 Azure SQL 或 SQL Server 建立空白的 ERSS 資料庫，直接連線到該資料庫後執行 `ErssSchema.sql`。腳本會建立資料表、索引及 `erss_app_role`。另行建立網站使用的資料庫使用者並加入該角色，網站登入帳號則存於 `ERSSACCTBL`。

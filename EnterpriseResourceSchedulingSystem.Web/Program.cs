@@ -17,7 +17,12 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddScoped<AccountCookieEvents>();
 builder.Services.AddSingleton<IPasswordVerifier, BCryptPasswordVerifier>();
 
-var connectionString = builder.Configuration.GetConnectionString("ErssDatabase"); //WEB專案中的 SECRET.JSON
+var useAzureDatabase = builder.Environment.IsDevelopment() &&
+    string.Equals(builder.Configuration["ErssDatabaseTarget"], "Azure", StringComparison.OrdinalIgnoreCase);
+var connectionName = useAzureDatabase ? "ErssDatabaseAzure" : "ErssDatabase";
+var connectionString = builder.Configuration.GetConnectionString(connectionName);
+if (useAzureDatabase && string.IsNullOrWhiteSpace(connectionString))
+    throw new InvalidOperationException("請在 Web 專案的 User Secrets 設定 ConnectionStrings:ErssDatabaseAzure。");
 if (!string.IsNullOrWhiteSpace(connectionString))
 {
     builder.Services.AddScoped<IDbConnectionFactory>(_ => new DbConnectionFactory(connectionString));
