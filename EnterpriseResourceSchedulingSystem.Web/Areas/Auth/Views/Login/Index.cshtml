@@ -4,7 +4,7 @@
     <section class="card login-card" aria-labelledby="login-title">
         <div class="card-body">
             <header class="login-brand">
-                <img src="~/img/logo.png" alt="亞東紀念醫院" width="128" height="128" />
+                <img src="~/img/scheduling-logo.png" asp-append-version="true" alt="" width="128" height="128" />
                 <h1 id="login-title">企業資源排程系統</h1>
             </header>
 
@@ -12,14 +12,14 @@
                 <input asp-for="ReturnUrl" type="hidden" />
                 <div asp-validation-summary="ModelOnly" class="text-danger mb-3" role="alert"></div>
 
-                <div class="mb-3">
+                <div class="login-field mb-3">
                     <label asp-for="Username" class="form-label fw-bold"></label>
                     <input asp-for="Username" class="form-control login-input" autocomplete="username"
                            placeholder="請輸入您的帳號" maxlength="50" required />
                     <span asp-validation-for="Username" class="text-danger"></span>
                 </div>
 
-                <div class="mb-4">
+                <div class="login-field mb-4">
                     <label asp-for="Password" class="form-label fw-bold"></label>
                     <div class="login-password-field">
                         <input asp-for="Password" class="form-control login-input"

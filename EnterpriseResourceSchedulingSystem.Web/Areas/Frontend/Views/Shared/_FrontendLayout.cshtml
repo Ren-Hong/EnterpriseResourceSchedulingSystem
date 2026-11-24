@@ -20,6 +20,9 @@
             {
                 <a asp-area="Backend" asp-controller="Users" asp-action="Index" class="btn btn-success btn-sm">後台管理</a>
             }
+            <form asp-area="Auth" asp-controller="Login" asp-action="Logout" method="post" class="m-0">
+                <button type="submit" class="btn btn-secondary btn-sm">登出</button>
+            </form>
         </div>
     </header>
 

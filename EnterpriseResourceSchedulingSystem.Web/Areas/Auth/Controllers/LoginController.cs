@@ -63,6 +63,14 @@ public sealed class LoginController(IAccountAuthenticationService? authenticatio
         return RedirectAfterLogin(input.ReturnUrl);
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Logout()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return RedirectToAction(nameof(Index));
+    }
+
     private IActionResult RedirectAfterLogin(string? returnUrl)
     {
         return Url.IsLocalUrl(returnUrl)

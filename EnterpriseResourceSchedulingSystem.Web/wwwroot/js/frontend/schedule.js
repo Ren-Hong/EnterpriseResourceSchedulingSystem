@@ -546,8 +546,6 @@ document.addEventListener("DOMContentLoaded", () => {
     async function loadBookings(slot) {
         const request = ++bookingsRequest;
         void loadBookingChanges(slot.slotId, request);
-        const output = byId("detailBookedNames");
-        output.value = "載入中…";
         personEmpty.hidden = false;
         personEmpty.textContent = "載入預約人員…";
         personFields.hidden = true;
@@ -555,8 +553,6 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const bookings = await scheduleRequest(`/slots/${slot.slotId}/bookings`);
             if (request !== bookingsRequest) return;
-            output.value = bookings.length ? bookings.map(booking => booking.displayName).join("\n") : "尚無預約";
-            output.rows = Math.min(5, Math.max(2, bookings.length));
             personEmpty.textContent = "此時段尚無預約。";
             personEmpty.hidden = bookings.length > 0;
             personFields.hidden = bookings.length === 0;
@@ -593,7 +589,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (error) {
             if (request !== bookingsRequest) return;
-            output.value = error.message;
             personEmpty.textContent = error.message;
         }
     }

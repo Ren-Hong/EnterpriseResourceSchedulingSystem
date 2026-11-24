@@ -11,7 +11,12 @@
 <div class="backend-layout">
     <header class="backend-header shadow-sm px-4 py-3">
         <span class="backend-system-name fw-bold">企業資源排程系統</span>
-        <a asp-area="Frontend" asp-controller="Schedule" asp-action="Index" class="btn backend-frontend-button btn-sm">前台作業</a>
+        <div class="d-flex align-items-center gap-2">
+            <a asp-area="Frontend" asp-controller="Schedule" asp-action="Index" class="btn backend-frontend-button btn-sm">前台作業</a>
+            <form asp-area="Auth" asp-controller="Login" asp-action="Logout" method="post" class="m-0">
+                <button type="submit" class="btn btn-secondary btn-sm">登出</button>
+            </form>
+        </div>
     </header>
 
     <div class="backend-body">
