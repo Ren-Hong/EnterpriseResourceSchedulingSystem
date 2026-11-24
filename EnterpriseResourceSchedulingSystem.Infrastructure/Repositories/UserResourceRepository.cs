@@ -17,7 +17,8 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
 
     public async Task<UserResourcePermissionList> GetPermissionsAsync(Guid userId, CancellationToken cancellationToken)
     {
-        const string assignedSql = """
+        // 已有該設備權限的SQL
+        const string assignedSql = """ 
             SELECT r.UIDRESID AS ResourceId, r.NVCHRESNAME AS ResourceName,
                    ur.VCHCREATEBY AS CreatedBy, ur.DTMCREATEDAT AS CreatedAt
             FROM dbo.ERSSUSERRES AS ur
@@ -25,6 +26,8 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
             WHERE ur.UIDUSERID = @UserId
             ORDER BY r.NVCHRESNAME;
             """;
+
+        // 還沒有該權限設備的SQL
         const string availableSql = """
             SELECT r.UIDRESID AS ResourceId, r.NVCHRESNAME AS ResourceName
             FROM dbo.ERSSRESTBL AS r
@@ -35,6 +38,7 @@ public sealed class UserResourceRepository(IUnitOfWork unitOfWork) : IUserResour
             )
             ORDER BY r.NVCHRESNAME;
             """;
+
         var assignedCommand = new CommandDefinition(assignedSql, new { UserId = userId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         var availableCommand = new CommandDefinition(availableSql, new { UserId = userId }, transaction: unitOfWork.Transaction, cancellationToken: cancellationToken);
         var assigned = (await unitOfWork.Connection.QueryAsync<UserResourcePermissionItem>(assignedCommand)).AsList();
