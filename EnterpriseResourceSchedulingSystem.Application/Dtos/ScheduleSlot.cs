@@ -15,6 +15,9 @@ public sealed record ScheduleVersion(Guid ResourceConfigId, int Version, int Max
 public sealed record CreateScheduleSlot(Guid ResourceId, Guid? ResourceConfigId, DateOnly Date,
     TimeOnly Start, TimeOnly End, int? Capacity, string? Note);
 
+public sealed record RescheduleScheduleSlot(Guid ResourceId, Guid ResourceConfigId, DateOnly Date,
+    TimeOnly Start, TimeOnly End, DateTimeOffset PreviousStart, DateTimeOffset PreviousEnd);
+
 public sealed record ScheduleBooking(Guid BookingId, string DisplayName, string? IdentityTypeName);
 
 public sealed record ScheduleBookingChange(string DisplayName, string Action, DateTimeOffset OccurredAt, string? Actor);

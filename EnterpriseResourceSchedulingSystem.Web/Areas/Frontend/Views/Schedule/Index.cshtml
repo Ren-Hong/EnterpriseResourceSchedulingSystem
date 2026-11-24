@@ -114,7 +114,7 @@
                     </form>
                     <div id="slotTemplates" class="scheduler-slot-templates" aria-label="可拖曳的空白時段">
                         <div id="customSlotTemplate" class="scheduler-slot-template" data-minutes="30">＋ 自訂 30 分鐘空白時間</div>
-                        @foreach (var minutes in new[] { 30, 60, 90, 120 })
+                        @foreach (var minutes in new[] { 30, 60, 90, 120, 180, 240 })
                         {
                             <div class="scheduler-slot-template" data-minutes="@minutes">＋ @minutes 分鐘空白時間</div>
                         }

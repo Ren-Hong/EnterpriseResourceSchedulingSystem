@@ -202,17 +202,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const slotCreateTab = byId("slotCreateTab");
     const slotFeedback = byId("scheduleSlotFeedback");
     const todayTaipei = () => new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Taipei" }).format(new Date());
+    const taipeiClockFormat = new Intl.DateTimeFormat("sv-SE", {
+        timeZone: "Asia/Taipei", dateStyle: "short", timeStyle: "medium", hourCycle: "h23"
+    });
     let selectedDate = todayTaipei();
     let selectedSlot = null;
     let versionRequest = 0;
     let slotModalOpen = false;
-    let creatingDroppedSlot = false;
+    let savingSlotTime = false;
     let resourceInfoRequest = 0;
     let bookingsRequest = 0;
 
     async function scheduleRequest(path, options = {}) {
         const headers = { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" };
-        if (options.method === "POST") {
+        if (options.method === "POST" || options.method === "PUT") {
             headers.RequestVerificationToken = form.elements.__RequestVerificationToken.value;
             headers["Content-Type"] = "application/json";
         }
@@ -399,7 +402,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function renderCalendarEvent(info) {
         const slot = info.event.extendedProps.slot;
-        const remaining = slot.status === "OPEN" ? Math.max(0, slot.capacity - slot.booked) : 0;
+        if (!slot) return info.event.title;
+
         const content = document.createElement("div");
         content.className = "scheduler-calendar-event";
         const time = document.createElement("div");
@@ -410,7 +414,7 @@ document.addEventListener("DOMContentLoaded", () => {
         name.className = "scheduler-calendar-event-name";
         name.textContent = slot.resourceName;
         const capacity = document.createElement("span");
-        capacity.textContent = `剩 ${remaining}/${slot.capacity}`;
+        capacity.textContent = `已約 ${slot.booked}/${slot.capacity}`;
         details.append(name, capacity);
         content.append(time, details);
         return { domNodes: [content] };
@@ -418,6 +422,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function mountCalendarTooltip(info) {
         const slot = info.event.extendedProps.slot;
+        if (!slot) return;
+
         const content = document.createElement("div");
         content.className = "scheduler-tooltip";
         const name = document.createElement("strong");
@@ -751,7 +757,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const date = start.slice(0, 10);
         const startTime = start.slice(11, 16);
         const endTime = end.slice(11, 16);
-        creatingDroppedSlot = true;
+        savingSlotTime = true;
         dropFeedback.textContent = "建立空白時段中…";
         try {
             const versions = await getVersions(resourceId, date);
@@ -778,7 +784,35 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (error) {
             dropFeedback.textContent = error.message;
         } finally {
-            creatingDroppedSlot = false;
+            savingSlotTime = false;
+        }
+    }
+
+    async function rescheduleSlot(info) {
+        const slot = info.oldEvent.extendedProps.slot;
+        const start = info.event.start.toISOString();
+        const end = info.event.end.toISOString();
+        const date = start.slice(0, 10);
+        savingSlotTime = true;
+        activateTab(slotCreateTab);
+        dropFeedback.textContent = "儲存時段調整中…";
+        try {
+            await scheduleRequest(`/slots/${slot.slotId}/time`, {
+                method: "PUT",
+                body: JSON.stringify({
+                    resourceId: slot.resourceId, resourceConfigId: slot.resourceConfigId, date,
+                    start: start.slice(11, 19), end: end.slice(11, 19),
+                    previousStart: slot.start + "+08:00", previousEnd: slot.end + "+08:00"
+                })
+            });
+            if (selectedSlot?.slotId === slot.slotId) clearSlot();
+            dropFeedback.textContent = "已更新時段起訖時間。";
+            calendar.refetchEvents();
+        } catch (error) {
+            info.revert();
+            dropFeedback.textContent = error.message;
+        } finally {
+            savingSlotTime = false;
         }
     }
     const intervalControl = byId("calendarIntervalControl");
@@ -825,6 +859,9 @@ document.addEventListener("DOMContentLoaded", () => {
         firstDay: 1,
         timeZone: "UTC",
         initialDate: todayTaipei(),
+        // Match Taipei wall-clock time to the calendar's UTC-based grid.
+        now: () => `${taipeiClockFormat.format(new Date()).replace(" ", "T")}Z`,
+        nowIndicator: true,
         allDaySlot: false,
         slotMinTime: "07:00:00",
         slotMaxTime: "22:00:00",
@@ -837,11 +874,15 @@ document.addEventListener("DOMContentLoaded", () => {
         droppable: Boolean(slotTemplates),
         dropAccept: ".scheduler-slot-template",
         eventAllow(info) {
-            if (!slotTemplates || slotModalOpen || creatingDroppedSlot || calendar.view.type === "dayGridMonth" || info.allDay || !info.end) return false;
+            if (!slotTemplates || slotModalOpen || savingSlotTime || calendar.view.type === "dayGridMonth" || info.allDay || !info.end) return false;
             return info.start.toISOString().slice(0, 10) === info.end.toISOString().slice(0, 10);
         },
         eventReceive: createDroppedSlot,
-        editable: false,
+        eventDrop: rescheduleSlot,
+        eventResize: rescheduleSlot,
+        eventResizableFromStart: Boolean(slotTemplates),
+        eventDragStart: info => info.el._tippy?.hide(),
+        eventResizeStart: info => info.el._tippy?.hide(),
         events(info, success, failure) {
             const resources = groups.resources;
             const people = groups.people;
@@ -860,6 +901,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 success(slots.map(slot => ({
                     id: slot.slotId, title: slot.resourceName, start: slot.start, end: slot.end,
                     display: "block",
+                    editable: Boolean(slotTemplates && slot.resourceConfigId && slot.status === "OPEN" &&
+                        slot.booked === 0 && new Date(slot.start + "+08:00") > new Date()),
                     classNames: [`scheduler-slot-${slotDisplayStatus(slot)}`],
                     extendedProps: { slot }
                 })));
@@ -874,7 +917,8 @@ document.addEventListener("DOMContentLoaded", () => {
         eventDidMount: mountCalendarTooltip,
         eventWillUnmount: info => info.el._tippy?.destroy(),
         eventClick(info) {
-            showSlot(info.event.extendedProps.slot);
+            const slot = info.event.extendedProps.slot;
+            if (slot) showSlot(slot);
         },
         dateClick(info) {
             selectedDate = info.dateStr.slice(0, 10);

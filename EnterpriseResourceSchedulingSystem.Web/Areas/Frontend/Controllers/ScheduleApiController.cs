@@ -87,6 +87,30 @@ public sealed class ScheduleApiController(IResourceService resources, IUserServi
         }
     }
 
+    [HttpPut("slots/{slotId:guid}/time")]
+    [Authorize(Policy = AuthorizationPolicies.BackendAccess)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RescheduleSlot(Guid slotId, RescheduleScheduleSlot request, CancellationToken ct)
+    {
+        try
+        {
+            await schedules.RescheduleSlotAsync(slotId, request, CurrentActor(), ct);
+            return NoContent();
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (KeyNotFoundException exception)
+        {
+            return NotFound(new { message = exception.Message });
+        }
+        catch (ScheduleConflictException exception)
+        {
+            return Conflict(new { message = exception.Message });
+        }
+    }
+
     [HttpPost("slots/{slotId:guid}/capacity/{capacity:int}")]
     [Authorize(Policy = AuthorizationPolicies.BackendAccess)]
     [ValidateAntiForgeryToken]

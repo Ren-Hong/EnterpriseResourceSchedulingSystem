@@ -136,13 +136,34 @@ public sealed class ScheduleRepository(IUnitOfWork unitOfWork) : IScheduleReposi
             SELECT CAST(1 AS bit) FROM dbo.ERSSRESTBL WITH (UPDLOCK, HOLDLOCK) WHERE UIDRESID = @ResourceId;
             """, new { ResourceId = resourceId }, ct));
 
-    public Task<bool> HasOverlapAsync(Guid resourceId, DateTime startUtc, DateTime endUtc, CancellationToken ct)
+    public Task<bool> HasOverlapAsync(Guid resourceId, DateTime startUtc, DateTime endUtc, CancellationToken ct, Guid? excludedSlotId = null)
         => unitOfWork.Connection.ExecuteScalarAsync<bool>(Command("""
             SELECT TOP (1) CAST(1 AS bit) --有查到東西就回傳 1 DAPPER會視作 TRUE
             FROM dbo.ERSSSLOTTBL
             WHERE UIDRESID = @ResourceId AND DTMSTARTAT < @EndUtc AND DTMENDAT > @StartUtc
-              AND NVCHSTATUS <> N'CANCELLED';
-            """, new { ResourceId = resourceId, StartUtc = startUtc, EndUtc = endUtc }, ct));
+              AND NVCHSTATUS <> N'CANCELLED' AND (@ExcludedSlotId IS NULL OR UIDSLOTID <> @ExcludedSlotId);
+            """, new { ResourceId = resourceId, StartUtc = startUtc, EndUtc = endUtc, ExcludedSlotId = excludedSlotId }, ct));
+
+    public async Task<bool> RescheduleSlotAsync(Guid slotId, RescheduleScheduleSlot request, DateTime startUtc, DateTime endUtc, string actor, CancellationToken ct)
+    {
+        const string sql = """
+            UPDATE s
+            SET DTMSTARTAT = @StartUtc, DTMENDAT = @EndUtc, VCHUPDATEBY = @Actor, DTMUPDATEDAT = SYSUTCDATETIME()
+            FROM dbo.ERSSSLOTTBL AS s
+            WHERE s.UIDSLOTID = @SlotId AND s.UIDRESID = @ResourceId AND s.UIDRESCFGID = @ResourceConfigId
+              AND s.NVCHSTATUS = N'OPEN' AND s.DTMSTARTAT > SYSUTCDATETIME() AND @StartUtc > SYSUTCDATETIME()
+              AND s.DTMSTARTAT = @PreviousStartUtc AND s.DTMENDAT = @PreviousEndUtc
+              AND NOT EXISTS (
+                  SELECT 1 FROM dbo.ERSSSCHTBL AS b WHERE b.UIDSLOTID = s.UIDSLOTID AND b.NVCHSTATUS = N'BOOKED'
+              );
+            """;
+        var parameters = new
+        {
+            SlotId = slotId, request.ResourceId, request.ResourceConfigId, StartUtc = startUtc, EndUtc = endUtc,
+            PreviousStartUtc = request.PreviousStart.UtcDateTime, PreviousEndUtc = request.PreviousEnd.UtcDateTime, Actor = actor
+        };
+        return await unitOfWork.Connection.ExecuteAsync(Command(sql, parameters, ct)) == 1;
+    }
 
     public async Task<Guid> CreateSlotAsync(Guid resourceId, Guid configId, int capacity, DateTime startUtc, DateTime endUtc, string? note, string actor, CancellationToken ct)
     {

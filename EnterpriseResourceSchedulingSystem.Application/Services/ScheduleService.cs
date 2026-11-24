@@ -62,6 +62,36 @@ public sealed class ScheduleService(IScheduleRepository schedules, IResourceConf
         }, ct);
     }
 
+    public Task RescheduleSlotAsync(Guid slotId, RescheduleScheduleSlot request, string actor, CancellationToken ct)
+    {
+        if (request.ResourceId == Guid.Empty || request.ResourceConfigId == Guid.Empty ||
+            !SlotTimeRange.TryCreate(request.Date, request.Start, request.End, out var range))
+            throw new ArgumentException("時段須在同一天內，結束時間須晚於開始時間，並以分鐘為單位。");
+
+        var start = ToUtc(range.Date, range.Start);
+        var end = ToUtc(range.Date, range.End);
+        return unitOfWork.ExecuteInTransactionAsync(async token =>
+        {
+            if (!await schedules.LockResourceForSlotCreationAsync(request.ResourceId, token))
+                throw new KeyNotFoundException("找不到設備資源。");
+
+            var versions = await GetVersionsAsync(request.ResourceId, range.Date, token);
+            if (!versions.Any(version => version.ResourceConfigId == request.ResourceConfigId))
+                throw new ScheduleConflictException("新日期須在原設備版本的生效期間內。");
+
+            if (await schedules.GetSlotForUpdateAsync(slotId, token) is null)
+                throw new KeyNotFoundException("找不到時段。");
+
+            if (await schedules.HasOverlapAsync(request.ResourceId, start, end, token, slotId))
+                throw new ScheduleConflictException("此設備在該時間已有時段。");
+
+            if (!await schedules.RescheduleSlotAsync(slotId, request, start, end, actor, token))
+                throw new ScheduleConflictException("只能調整尚未開始且無有效預約的開放時段。若時段已被變更，請重新載入後再試。");
+
+            return true;
+        }, ct);
+    }
+
     public Task<bool> IncreaseCapacityAsync(Guid slotId, int capacity, string actor, CancellationToken ct)
         => unitOfWork.ExecuteInTransactionAsync(async token =>
         {

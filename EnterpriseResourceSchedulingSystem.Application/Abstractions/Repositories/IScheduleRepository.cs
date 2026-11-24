@@ -22,7 +22,9 @@ public interface IScheduleRepository
     Task<bool> LockResourceForSlotCreationAsync(Guid resourceId, CancellationToken ct);
 
     /// <summary>判斷設備是否已有與指定 UTC 時間範圍重疊的未取消時段。</summary>
-    Task<bool> HasOverlapAsync(Guid resourceId, DateTime startUtc, DateTime endUtc, CancellationToken ct);
+    Task<bool> HasOverlapAsync(Guid resourceId, DateTime startUtc, DateTime endUtc, CancellationToken ct, Guid? excludedSlotId = null);
+
+    Task<bool> RescheduleSlotAsync(Guid slotId, RescheduleScheduleSlot request, DateTime startUtc, DateTime endUtc, string actor, CancellationToken ct);
 
     /// <summary>建立空白時段，保存選定的設定版本，並回傳時段識別碼。</summary>
     Task<Guid> CreateSlotAsync(Guid resourceId, Guid configId, int capacity, DateTime startUtc, DateTime endUtc, string? note, string actor, CancellationToken ct);
